@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import '@/styles/variables.css'
 import searchIcon from '@/assets/icon-search.svg'
 import exportIcon from '@/assets/icon-export.svg'
@@ -38,7 +38,7 @@ const iconFileInput = ref<HTMLInputElement | null>(null)
 // IndexedDB 相关函数
 const initDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('BookmarkDB', 1)
+    const request = indexedDB.open('BookmarkDB', 2)
 
     request.onerror = () => reject(request.error)
 
@@ -51,6 +51,9 @@ const initDB = (): Promise<IDBDatabase> => {
       const database = (event.target as IDBOpenDBRequest).result
       if (!database.objectStoreNames.contains('bookmarks')) {
         database.createObjectStore('bookmarks', { keyPath: 'id', autoIncrement: true })
+      }
+      if (!database.objectStoreNames.contains('settings')) {
+        database.createObjectStore('settings', { keyPath: 'key' })
       }
     }
   })
@@ -66,6 +69,30 @@ const loadBookmarks = async () => {
   request.onsuccess = () => {
     bookmarks.value = request.result
   }
+}
+
+// 加载设置
+const loadSettings = async () => {
+  if (!db.value) return
+
+  const transaction = db.value.transaction('settings', 'readonly')
+  const store = transaction.objectStore('settings')
+  const request = store.get('searchEngine')
+
+  request.onsuccess = () => {
+    if (request.result) {
+      currentEngine.value = request.result.value
+    }
+  }
+}
+
+// 保存设置
+const saveSettings = (key: string, value: string) => {
+  if (!db.value) return
+
+  const transaction = db.value.transaction('settings', 'readwrite')
+  const store = transaction.objectStore('settings')
+  store.put({ key, value })
 }
 
 const addBookmark = (bookmark: Bookmark): Promise<number> => {
@@ -316,9 +343,15 @@ const importData = (event: Event) => {
 
 onMounted(async () => {
   await initDB()
+  await loadSettings()
   await loadBookmarks()
   updateScreenWidth()
   window.addEventListener('resize', updateScreenWidth)
+})
+
+// 监听搜索引擎变化并保存
+watch(currentEngine, (newEngine: string) => {
+  saveSettings('searchEngine', newEngine)
 })
 
 onUnmounted(() => {
@@ -367,18 +400,20 @@ onUnmounted(() => {
     </div>
 
     <div class="search-container">
-      <EngineSelector v-model="currentEngine" />
+      <div class="search-bar">
+        <EngineSelector v-model="currentEngine" />
 
-      <div class="search-box">
-        <input
-          v-model="searchQuery"
-          type="text"
-          placeholder="输入搜索内容..."
-          @keyup.enter="search"
-        />
-        <button class="search-btn" @click="search">
-          <img :src="searchIcon" alt="搜索" />
-        </button>
+        <div class="search-box">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="输入搜索内容..."
+            @keyup.enter="search"
+          />
+          <button class="search-btn" @click="search">
+            <img :src="searchIcon" alt="搜索" />
+          </button>
+        </div>
       </div>
 
       <BookmarkGrid
@@ -556,8 +591,15 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 16px;
+  gap: 48px;
   width: 600px;
+}
+
+.search-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
 }
 
 .search-box {
@@ -805,7 +847,11 @@ onUnmounted(() => {
     width: 100%;
     max-width: 360px;
     align-items: center;
-    gap: 12px;
+    gap: 40px;
+  }
+
+  .search-bar {
+    gap: 6px;
   }
 
   .modal {

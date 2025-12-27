@@ -26,6 +26,13 @@ const emit = defineEmits<{
 const contextMenuVisible = ref(false)
 const contextMenuBookmark = ref<Bookmark | null>(null)
 const currentGroup = ref('默认')
+const containerRef = ref<HTMLElement | null>(null)
+
+// 检测是否可以滚动
+const canScroll = computed(() => {
+  if (!containerRef.value) return false
+  return containerRef.value.scrollHeight > containerRef.value.clientHeight
+})
 
 // 从书签中提取所有分组
 const groups = computed(() => {
@@ -96,7 +103,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="bookmark-container">
+  <div ref="containerRef" class="bookmark-container" :class="{ 'can-scroll': canScroll }">
     <div class="bookmark-grid">
       <div class="bookmark-item">
         <div class="bookmark-icon-wrapper add-btn" @click="openAddModal">
@@ -354,6 +361,28 @@ onUnmounted(() => {
 
 /* 手机适配 */
 @media (max-width: 768px) {
+  .bookmark-container {
+    max-height: calc((48px + 8px + 11px) * 5);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* 隐藏滚动条 */
+  .bookmark-container {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .bookmark-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 可以滚动时显示遮罩 */
+  .can-scroll .bookmark-grid {
+    mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  }
+
   .bookmark-grid {
     grid-template-columns: repeat(4, 1fr);
     gap: 12px;
