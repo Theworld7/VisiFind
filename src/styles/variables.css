@@ -1,0 +1,36 @@
+/* 主题色变量 */
+:root {
+  /* 背景渐变 */
+  --bg-gradient-start: #0f0c29;
+  --bg-gradient-mid: #302b63;
+  --bg-gradient-end: #24243e;
+
+  /* 强调色 */
+  --primary-color: #4a90d9;
+  --danger-color: #e6162d;
+
+  /* 文字颜色 */
+  --text-primary: #333;
+  --text-secondary: #666;
+  --text-white: #fff;
+
+  /* 背景色 */
+  --bg-white: #fff;
+  --bg-light: #f5f5f5;
+  --bg-lighter: #eee;
+  --bg-overlay: rgba(0, 0, 0, 0.5);
+  --bg-overlay-light: rgba(0, 0, 0, 0.2);
+  --bg-overlay-lighter: rgba(0, 0, 0, 0.15);
+
+  /* 白色半透明背景 */
+  --bg-white-20: rgba(255, 255, 255, 0.2);
+  --bg-white-30: rgba(255, 255, 255, 0.3);
+  --bg-white-85: rgba(255, 255, 255, 0.85);
+  --bg-white-90: rgba(255, 255, 255, 0.9);
+
+  /* 边框颜色 */
+  --border-color: #ddd;
+
+  /* hover 背景 */
+  --hover-bg-light: #fef0ef;
+}
