@@ -1,48 +1,82 @@
-# vite-project
+# VisiFind
 
-This template should help get you started developing with Vue 3 in Vite.
+A clean and beautiful browser start page extension.
 
-## Recommended IDE Setup
+一个简洁美观的浏览器起始页扩展。
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## Features 功能特点
 
-## Recommended Browser Setup
+- **Multi-Search Engine Support** - Switch between Bing, Google, Baidu, and Sogou.
+- **多搜索引擎支持** - 支持切换必应、谷歌、百度、搜狗。
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd) 
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+- **Bookmark Management** - Add, edit, and delete bookmarks with IndexedDB storage.
+- **书签管理** - 使用 IndexedDB 存储，支持添加、编辑、删除书签。
 
-## Type Support for `.vue` Imports in TS
+- **Custom Background** - Upload images or use URL for custom backgrounds.
+- **自定义背景** - 支持上传图片或使用 URL 设置背景。
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+- **Data Import/Export** - Backup and restore your bookmarks.
+- **数据导入导出** - 备份和恢复书签数据。
 
-## Customize configuration
+- **Responsive Design** - Works on desktop and mobile devices.
+- **响应式设计** - 支持桌面端和移动端。
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+## Tech Stack 技术栈
 
-## Project Setup
+- Vue 3 + Composition API
+- TypeScript
+- Vite
+- Pinia (State Management)
+- Vue Router
+- IndexedDB
 
-```sh
+## Getting Started 快速开始
+
+```bash
+# Install dependencies
+# 安装依赖
 pnpm install
-```
 
-### Compile and Hot-Reload for Development
-
-```sh
+# Development server
+# 开发服务器
 pnpm dev
-```
 
-### Type-Check, Compile and Minify for Production
-
-```sh
+# Build for production
+# 构建生产版本
 pnpm build
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+## Extension Installation 扩展安装
 
-```sh
-pnpm lint
-```
+1. Run `pnpm build` to build the extension.
+2. Open `chrome://extensions/` in your browser.
+3. Enable Developer Mode.
+4. Click "Load unpacked" and select the `dist` directory.
+
+## Open Source License 开源协议
+
+This project is licensed under the MIT License.
+
+本项目采用 MIT 协议开源。
+
+MIT License
+
+Copyright (c) 2024 VisiFind Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
