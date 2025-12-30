@@ -4,6 +4,12 @@
   --bg-gradient-start: #0f0c29;
   --bg-gradient-mid: #302b63;
   --bg-gradient-end: #24243e;
+  --bg-gradient: linear-gradient(
+    135deg,
+    var(--bg-gradient-start) 0%,
+    var(--bg-gradient-mid) 50%,
+    var(--bg-gradient-end) 100%
+  );
 
   /* 强调色 */
   --primary-color: #4a90d9;

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
 import '@/styles/variables.css'
 import searchIcon from '@/assets/icon-search.svg'
 import exportIcon from '@/assets/icon-export.svg'
 import importIcon from '@/assets/icon-import.svg'
 import BookmarkGrid from '@/components/BookmarkGrid.vue'
 import EngineSelector from '@/components/EngineSelector.vue'
+import BackgroundSettings from '@/components/BackgroundSettings.vue'
 
 interface Bookmark {
   id?: number
@@ -17,9 +18,17 @@ interface Bookmark {
 
 const backgroundUrl = ref('')
 const backgroundInputMode = ref<'none' | 'upload' | 'url'>('none')
-const backgroundFileInput = ref<HTMLInputElement | null>(null)
 const showBackgroundModal = ref(false)
 const backgroundUrlInput = ref('')
+const backgroundBlur = ref(0)
+
+const backgroundStyle = computed(() => {
+  return {
+    backgroundImage: backgroundUrl.value ? `url(${backgroundUrl.value})` : undefined,
+    '--bg-blur': backgroundBlur.value ? `${backgroundBlur.value}px` : undefined,
+  }
+})
+
 const screenWidth = ref(window.innerWidth)
 const searchQuery = ref('')
 const currentEngine = ref('baidu')
@@ -239,39 +248,11 @@ const clearCustomIcon = () => {
   iconInputMode.value = 'none'
 }
 
-// 背景相关函数
-const handleBackgroundUpload = (event: Event) => {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      backgroundUrl.value = e.target?.result as string
-      backgroundInputMode.value = 'upload'
-    }
-    reader.readAsDataURL(file)
+const saveBackground = () => {
+  if (backgroundInputMode.value === 'url') {
+    backgroundUrl.value = backgroundUrlInput.value
   }
-}
-
-const setBackgroundUrlMode = () => {
-  backgroundInputMode.value = 'url'
-}
-
-const clearBackground = () => {
-  backgroundUrl.value = ''
-  backgroundInputMode.value = 'none'
-  backgroundUrlInput.value = ''
-}
-
-const saveBackground = (url: string) => {
-  backgroundUrl.value = url
-  backgroundInputMode.value = url ? 'url' : 'none'
   showBackgroundModal.value = false
-}
-
-const closeBackgroundModal = () => {
-  showBackgroundModal.value = false
-  backgroundUrlInput.value = ''
 }
 
 // 导出数据
@@ -280,6 +261,7 @@ const exportData = () => {
     version: 1,
     backgroundUrl: backgroundUrl.value,
     backgroundInputMode: backgroundInputMode.value,
+    backgroundBlur: backgroundBlur.value,
     bookmarks: bookmarks.value,
   }
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
@@ -328,6 +310,9 @@ const importData = (event: Event) => {
         if (data.backgroundInputMode !== undefined) {
           backgroundInputMode.value = data.backgroundInputMode
         }
+        if (data.backgroundBlur !== undefined) {
+          backgroundBlur.value = data.backgroundBlur
+        }
 
         alert(`导入成功！共导入 ${importCount} 个书签`)
       }
@@ -362,7 +347,7 @@ onUnmounted(() => {
 <template>
   <div
     class="fullscreen"
-    :style="{ backgroundImage: backgroundUrl ? `url(${backgroundUrl})` : '' }"
+    :style="backgroundStyle"
   >
     <!-- 右上角操作按钮 -->
     <div class="action-buttons">
@@ -488,50 +473,14 @@ onUnmounted(() => {
     </div>
 
     <!-- 背景设置模态框 -->
-    <div v-if="showBackgroundModal" class="modal-overlay" @click="closeBackgroundModal">
-      <div class="modal" @click.stop>
-        <h3 class="modal-title">设置背景</h3>
-        <div class="form-group">
-          <label>背景方式</label>
-          <div class="icon-mode-tabs">
-            <button :class="{ active: backgroundInputMode === 'none' }" @click="clearBackground">
-              无背景
-            </button>
-            <button
-              :class="{ active: backgroundInputMode === 'url' }"
-              @click="setBackgroundUrlMode"
-            >
-              在线图片
-            </button>
-            <button
-              :class="{ active: backgroundInputMode === 'upload' }"
-              @click="backgroundFileInput?.click()"
-            >
-              上传图片
-            </button>
-            <input
-              ref="backgroundFileInput"
-              type="file"
-              accept="image/*"
-              style="display: none"
-              @change="handleBackgroundUpload"
-            />
-          </div>
-        </div>
-        <div v-if="backgroundInputMode === 'url'" class="form-group">
-          <label>图片URL</label>
-          <input
-            v-model="backgroundUrlInput"
-            type="text"
-            placeholder="输入图片链接（如 https://...）"
-          />
-        </div>
-        <div class="modal-actions">
-          <button class="btn-cancel" @click="closeBackgroundModal">取消</button>
-          <button class="btn-save" @click="saveBackground(backgroundUrlInput)">应用</button>
-        </div>
-      </div>
-    </div>
+    <BackgroundSettings
+      v-model:show="showBackgroundModal"
+      v-model:background-url="backgroundUrl"
+      v-model:background-input-mode="backgroundInputMode"
+      v-model:background-url-input="backgroundUrlInput"
+      v-model:background-blur="backgroundBlur"
+      @save="saveBackground"
+    />
   </div>
 </template>
 
@@ -540,15 +489,11 @@ onUnmounted(() => {
   width: 100vw;
   height: 100vh;
   padding: 24px;
+  position: relative;
+  background-image: var(--bg-image), var(--bg-gradient);
   background-size: cover;
   background-position: center;
-  position: relative;
-  background: linear-gradient(
-    135deg,
-    var(--bg-gradient-start) 0%,
-    var(--bg-gradient-mid) 50%,
-    var(--bg-gradient-end) 100%
-  );
+  background-repeat: no-repeat;
 }
 
 .action-buttons {
@@ -740,6 +685,20 @@ onUnmounted(() => {
   border-color: transparent;
 }
 
+.bg-preview {
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+
+.bg-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .icon-url-input {
   display: flex;
   align-items: center;
@@ -818,8 +777,8 @@ onUnmounted(() => {
   right: 0;
   bottom: 0;
   background: var(--bg-overlay-lighter);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(var(--bg-blur, 0px));
+  -webkit-backdrop-filter: blur(var(--bg-blur, 0px));
   pointer-events: none;
 }
 
