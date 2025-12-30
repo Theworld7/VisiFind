@@ -86,11 +86,29 @@ const loadSettings = async () => {
 
   const transaction = db.value.transaction('settings', 'readonly')
   const store = transaction.objectStore('settings')
-  const request = store.get('searchEngine')
 
-  request.onsuccess = () => {
-    if (request.result) {
-      currentEngine.value = request.result.value
+  // 加载搜索引擎
+  const engineRequest = store.get('searchEngine')
+  engineRequest.onsuccess = () => {
+    if (engineRequest.result) {
+      currentEngine.value = engineRequest.result.value
+    }
+  }
+
+  // 加载背景设置
+  const bgRequest = store.get('backgroundSettings')
+  bgRequest.onsuccess = () => {
+    if (bgRequest.result) {
+      const settings = bgRequest.result.value
+      if (settings.backgroundUrl !== undefined) {
+        backgroundUrl.value = settings.backgroundUrl
+      }
+      if (settings.backgroundInputMode !== undefined) {
+        backgroundInputMode.value = settings.backgroundInputMode
+      }
+      if (settings.backgroundBlur !== undefined) {
+        backgroundBlur.value = settings.backgroundBlur
+      }
     }
   }
 }
@@ -102,6 +120,22 @@ const saveSettings = (key: string, value: string) => {
   const transaction = db.value.transaction('settings', 'readwrite')
   const store = transaction.objectStore('settings')
   store.put({ key, value })
+}
+
+// 保存背景设置
+const saveBackgroundSettings = () => {
+  if (!db.value) return
+
+  const transaction = db.value.transaction('settings', 'readwrite')
+  const store = transaction.objectStore('settings')
+  store.put({
+    key: 'backgroundSettings',
+    value: {
+      backgroundUrl: backgroundUrl.value,
+      backgroundInputMode: backgroundInputMode.value,
+      backgroundBlur: backgroundBlur.value,
+    },
+  })
 }
 
 const addBookmark = (bookmark: Bookmark): Promise<number> => {
@@ -253,6 +287,7 @@ const saveBackground = () => {
     backgroundUrl.value = backgroundUrlInput.value
   }
   showBackgroundModal.value = false
+  saveBackgroundSettings()
 }
 
 // 导出数据
@@ -338,6 +373,15 @@ onMounted(async () => {
 watch(currentEngine, (newEngine: string) => {
   saveSettings('searchEngine', newEngine)
 })
+
+// 监听背景设置变化并保存
+watch(
+  [backgroundUrl, backgroundInputMode, backgroundBlur],
+  () => {
+    saveBackgroundSettings()
+  },
+  { deep: true }
+)
 
 onUnmounted(() => {
   window.removeEventListener('resize', updateScreenWidth)
