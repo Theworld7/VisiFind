@@ -15,7 +15,7 @@ interface Emits {
   (e: 'update:backgroundInputMode', value: 'none' | 'upload' | 'url'): void
   (e: 'update:backgroundUrlInput', value: string): void
   (e: 'update:backgroundBlur', value: number): void
-  (e: 'save'): void
+  (e: 'save', data: { backgroundUrl: string; backgroundInputMode: string; backgroundBlur: number }): void
 }
 
 const props = defineProps<Props>()
@@ -36,12 +36,15 @@ watch(
       tempUrlInput.value = props.backgroundUrlInput
       tempBlur.value = props.backgroundBlur
       tempInputMode.value = props.backgroundInputMode
+      // 如果是 URL 模式，直接使用 backgroundUrl 作为输入框的值
+      if (props.backgroundInputMode === 'url' && props.backgroundUrl) {
+        tempUrlInput.value = props.backgroundUrl
+      }
     }
   }
 )
 
-// 预览使用的值（临时变量优先，否则使用 props）
-const previewUrl = computed(() => tempBackgroundUrl.value || props.backgroundUrl)
+// 预览使用的值
 const previewBlur = computed(() => tempBlur.value)
 const previewMode = computed(() => tempInputMode.value)
 
@@ -62,6 +65,10 @@ const handleBackgroundUpload = (event: Event) => {
 
 const setBackgroundUrlMode = () => {
   tempInputMode.value = 'url'
+  // 如果 tempUrlInput 为空，但 props 有背景 URL 且不是上传模式，则使用它
+  if (!tempUrlInput.value && props.backgroundUrl && props.backgroundInputMode !== 'upload') {
+    tempUrlInput.value = props.backgroundUrl
+  }
 }
 
 const clearBackground = () => {
@@ -76,12 +83,14 @@ const close = () => {
 }
 
 const save = () => {
-  // 将临时值提交到父组件
-  emit('update:backgroundUrl', tempBackgroundUrl.value)
-  emit('update:backgroundInputMode', tempInputMode.value)
-  emit('update:backgroundUrlInput', tempUrlInput.value)
-  emit('update:backgroundBlur', tempBlur.value)
-  emit('save')
+  // 将数据传递给父组件处理
+  // URL 模式使用 tempUrlInput，upload 模式使用 tempBackgroundUrl
+  const url = tempInputMode.value === 'url' ? tempUrlInput.value : tempBackgroundUrl.value
+  emit('save', {
+    backgroundUrl: url,
+    backgroundInputMode: tempInputMode.value,
+    backgroundBlur: tempBlur.value,
+  })
 }
 </script>
 
@@ -119,14 +128,14 @@ const save = () => {
             />
           </div>
           <!-- 上传预览 -->
-          <div v-if="previewMode === 'upload' && previewUrl" class="form-group">
+          <div v-if="previewMode === 'upload' && tempBackgroundUrl" class="form-group">
             <label>预览</label>
             <div class="bg-preview">
-              <img :src="previewUrl" alt="背景预览" />
+              <img :src="tempBackgroundUrl" alt="背景预览" />
             </div>
           </div>
-          <!-- URL输入 -->
-          <div v-if="previewMode === 'url'" class="form-group">
+          <!-- URL输入 - 无背景模式不显示 -->
+          <div v-if="previewMode !== 'none'" class="form-group">
             <label>图片URL</label>
             <input
               :value="tempUrlInput"
@@ -134,6 +143,10 @@ const save = () => {
               placeholder="输入图片链接（如 https://...）"
               @input="tempUrlInput = ($event.target as HTMLInputElement).value"
             />
+            <!-- URL预览 - 只在URL模式且有填写URL时显示 -->
+            <div v-if="previewMode === 'url' && tempUrlInput" class="bg-preview" style="margin-top: 12px">
+              <img :src="tempUrlInput" alt="背景预览" />
+            </div>
           </div>
           <!-- 模糊效果 -->
           <div v-if="previewMode !== 'none'" class="form-group">

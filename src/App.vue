@@ -23,10 +23,12 @@ const backgroundUrlInput = ref('')
 const backgroundBlur = ref(0)
 
 const backgroundStyle = computed(() => {
-  return {
-    backgroundImage: backgroundUrl.value ? `url(${backgroundUrl.value})` : undefined,
-    '--bg-blur': backgroundBlur.value ? `${backgroundBlur.value}px` : undefined,
+  const style: Record<string, string> = {}
+  if (backgroundUrl.value) {
+    style.backgroundImage = `url(${backgroundUrl.value})`
   }
+  style['--bg-blur'] = backgroundBlur.value ? `${backgroundBlur.value}px` : '0px'
+  return style
 })
 
 const screenWidth = ref(window.innerWidth)
@@ -282,11 +284,19 @@ const clearCustomIcon = () => {
   iconInputMode.value = 'none'
 }
 
-const saveBackground = () => {
-  if (backgroundInputMode.value === 'url') {
-    backgroundUrl.value = backgroundUrlInput.value
-  }
+// 处理背景设置保存
+const handleBackgroundSave = (data: {
+  backgroundUrl: string
+  backgroundInputMode: string
+  backgroundBlur: number
+}) => {
+  // 更新数据
+  backgroundUrl.value = data.backgroundUrl
+  backgroundInputMode.value = data.backgroundInputMode as typeof backgroundInputMode.value
+  backgroundBlur.value = data.backgroundBlur
+  // 关闭弹窗
   showBackgroundModal.value = false
+  // 保存设置
   saveBackgroundSettings()
 }
 
@@ -374,25 +384,13 @@ watch(currentEngine, (newEngine: string) => {
   saveSettings('searchEngine', newEngine)
 })
 
-// 监听背景设置变化并保存
-watch(
-  [backgroundUrl, backgroundInputMode, backgroundBlur],
-  () => {
-    saveBackgroundSettings()
-  },
-  { deep: true }
-)
-
 onUnmounted(() => {
   window.removeEventListener('resize', updateScreenWidth)
 })
 </script>
 
 <template>
-  <div
-    class="fullscreen"
-    :style="backgroundStyle"
-  >
+  <div class="fullscreen" :class="{ 'has-background': backgroundUrl }" :style="backgroundStyle">
     <!-- 右上角操作按钮 -->
     <div class="action-buttons">
       <!-- 背景设置按钮 -->
@@ -523,7 +521,7 @@ onUnmounted(() => {
       v-model:background-input-mode="backgroundInputMode"
       v-model:background-url-input="backgroundUrlInput"
       v-model:background-blur="backgroundBlur"
-      @save="saveBackground"
+      @save="handleBackgroundSave"
     />
   </div>
 </template>
@@ -534,7 +532,20 @@ onUnmounted(() => {
   height: 100vh;
   padding: 24px;
   position: relative;
-  background-image: var(--bg-image), var(--bg-gradient);
+  background-color: var(--bg-gradient-start);
+  background-image: linear-gradient(
+    135deg,
+    var(--bg-gradient-start) 0%,
+    var(--bg-gradient-mid) 50%,
+    var(--bg-gradient-end) 100%
+  );
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.fullscreen.has-background {
+  background-color: transparent;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
