@@ -884,4 +884,13 @@ onUnmounted(() => {
     text-align: center;
   }
 }
+
+@media (max-width: 392px) {
+  .search-container {
+    width: 100% !important;
+    max-width: 100%;
+    padding: 0 16px;
+    box-sizing: border-box;
+  }
+}
 </style>
