@@ -214,6 +214,11 @@ const openBookmark = (url: string) => {
   window.open(url, '_blank')
 }
 
+// 处理书签排序
+const handleReorder = ( reorderedBookmarks: Bookmark[]) => {
+  bookmarks.value = reorderedBookmarks
+}
+
 const openAddModal = () => {
   modalMode.value = 'add'
   formName.value = ''
@@ -449,6 +454,7 @@ onUnmounted(() => {
         @edit="openEditModal"
         @delete="deleteBookmark"
         @open="openBookmark"
+        @reorder="handleReorder"
       />
     </div>
 
@@ -585,7 +591,7 @@ onUnmounted(() => {
 
 .search-container {
   position: absolute;
-  top: 35%;
+  top: 28%;
   left: 50%;
   transform: translateX(-50%);
   display: flex;

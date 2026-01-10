@@ -21,12 +21,71 @@ const emit = defineEmits<{
   (e: 'edit', bookmark: Bookmark): void
   (e: 'delete', id: number): void
   (e: 'open', url: string): void
+  (e: 'reorder', bookmarks: Bookmark[]): void
 }>()
 
 const contextMenuVisible = ref(false)
 const contextMenuBookmark = ref<Bookmark | null>(null)
 const currentGroup = ref('默认')
 const containerRef = ref<HTMLElement | null>(null)
+
+// 拖拽相关状态
+const draggedIndex = ref<number | null>(null)
+const dragOverIndex = ref<number | null>(null)
+
+// 开始拖拽
+const handleDragStart = (event: DragEvent, index: number) => {
+  draggedIndex.value = index
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', index.toString())
+  }
+}
+
+// 拖拽经过
+const handleDragOver = (event: DragEvent, index: number) => {
+  event.preventDefault()
+  if (draggedIndex.value !== null && draggedIndex.value !== index) {
+    dragOverIndex.value = index
+  }
+}
+
+// 拖拽离开
+const handleDragLeave = () => {
+  dragOverIndex.value = null
+}
+
+// 拖拽结束
+const handleDragEnd = () => {
+  draggedIndex.value = null
+  dragOverIndex.value = null
+}
+
+// 放置时更新顺序
+const handleDrop = (event: DragEvent, targetIndex: number) => {
+  event.preventDefault()
+  if (draggedIndex.value === null || draggedIndex.value === targetIndex) {
+    handleDragEnd()
+    return
+  }
+
+  // 复制当前书签数组
+  const bookmarks = [...filteredBookmarks.value]
+  const draggedBookmark = bookmarks[draggedIndex.value]
+
+  if (!draggedBookmark) {
+    handleDragEnd()
+    return
+  }
+
+  // 移除拖拽项并插入到目标位置
+  bookmarks.splice(draggedIndex.value, 1)
+  bookmarks.splice(targetIndex, 0, draggedBookmark)
+
+  // 通知父组件更新
+  emit('reorder', bookmarks)
+  handleDragEnd()
+}
 
 // 检测是否可以滚动
 const canScroll = computed(() => {
@@ -111,7 +170,18 @@ onUnmounted(() => {
         </div>
         <span class="bookmark-name">新增</span>
       </div>
-      <div v-for="bookmark in filteredBookmarks" :key="bookmark.id" class="bookmark-item">
+      <div
+        v-for="(bookmark, index) in filteredBookmarks"
+        :key="bookmark.id"
+        class="bookmark-item"
+        :class="{ 'dragging': draggedIndex === index, 'drag-over': dragOverIndex === index }"
+        draggable="true"
+        @dragstart="handleDragStart($event, index)"
+        @dragover="handleDragOver($event, index)"
+        @dragleave="handleDragLeave"
+        @dragend="handleDragEnd"
+        @drop="handleDrop($event, index)"
+      >
         <div
           class="bookmark-icon-wrapper"
           @click="openBookmark(bookmark.url)"
@@ -182,8 +252,11 @@ onUnmounted(() => {
 .bookmark-grid {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
-  gap: 16px;
+  grid-auto-rows: 72px;
+  gap: 12px;
   width: 100%;
+  height: 216px;
+  overflow-y: auto;
 }
 
 .bookmark-item {
@@ -192,17 +265,29 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.2s, background 0.2s;
+  padding: 4px;
+  border-radius: 12px;
 }
 
 .bookmark-item:hover {
   transform: translateY(-4px);
 }
 
+.bookmark-item.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.bookmark-item.drag-over {
+  transform: scale(1.05);
+  background: var(--bg-white-20);
+}
+
 .bookmark-icon-wrapper {
   position: relative;
-  width: 56px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   overflow: visible;
 }
@@ -238,7 +323,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: var(--text-white);
   box-shadow: 0 2px 8px var(--bg-overlay-lighter);
@@ -385,16 +470,18 @@ onUnmounted(() => {
 
   .bookmark-grid {
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
+    grid-auto-rows: 64px;
+    gap: 10px;
+    height: 320px;
   }
 
   .bookmark-icon-wrapper {
-    width: 48px;
-    height: 48px;
+    width: 36px;
+    height: 36px;
   }
 
   .bookmark-icon {
-    font-size: 16px;
+    font-size: 14px;
   }
 
   .bookmark-name {
