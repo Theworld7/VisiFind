@@ -108,7 +108,7 @@ const groups = computed(() => {
 // 根据当前分组过滤书签
 const filteredBookmarks = computed(() => {
   if (currentGroup.value === '默认') {
-    return props.bookmarks
+    return props.bookmarks.filter((bookmark) => !bookmark.group || !bookmark.group.trim())
   }
   return props.bookmarks.filter((bookmark) => bookmark.group === currentGroup.value)
 })
