@@ -69,18 +69,36 @@ const handleDrop = (event: DragEvent, targetIndex: number) => {
     return
   }
 
-  // 复制当前书签数组
-  const bookmarks = [...filteredBookmarks.value]
-  const draggedBookmark = bookmarks[draggedIndex.value]
+  // 复制完整书签数组
+  const bookmarks = [...props.bookmarks]
+  const currentGroupBookmarks = bookmarks.filter((b) =>
+    currentGroup.value === '默认'
+      ? !b.group || !b.group.trim()
+      : b.group === currentGroup.value
+  )
 
+  const draggedBookmark = currentGroupBookmarks[draggedIndex.value]
   if (!draggedBookmark) {
     handleDragEnd()
     return
   }
 
-  // 移除拖拽项并插入到目标位置
-  bookmarks.splice(draggedIndex.value, 1)
-  bookmarks.splice(targetIndex, 0, draggedBookmark)
+  // 在当前分组内排序
+  currentGroupBookmarks.splice(draggedIndex.value, 1)
+  currentGroupBookmarks.splice(targetIndex, 0, draggedBookmark)
+
+  // 将排序后的分组书签放回原位置
+  let groupIndex = 0
+  bookmarks.forEach((bookmark, i) => {
+    const isInCurrentGroup =
+      currentGroup.value === '默认'
+        ? !bookmark.group || !bookmark.group.trim()
+        : bookmark.group === currentGroup.value
+    if (isInCurrentGroup) {
+      bookmarks[i] = currentGroupBookmarks[groupIndex]
+      groupIndex++
+    }
+  })
 
   // 通知父组件更新
   emit('reorder', bookmarks)
