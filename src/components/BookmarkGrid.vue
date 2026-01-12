@@ -26,6 +26,7 @@ const emit = defineEmits<{
 
 const contextMenuVisible = ref(false)
 const contextMenuBookmark = ref<Bookmark | null>(null)
+const contextMenuStyle = ref<Record<string, string>>({})
 const currentGroup = ref('默认')
 const containerRef = ref<HTMLElement | null>(null)
 
@@ -157,6 +158,43 @@ const showContextMenu = (event: MouseEvent, bookmark: Bookmark) => {
   event.preventDefault()
   event.stopPropagation()
   contextMenuBookmark.value = bookmark
+
+  // 默认居中定位
+  let style: Record<string, string> = {
+    left: '50%',
+    top: '100%',
+    transform: 'translateX(-50%)',
+    marginTop: '8px'
+  }
+
+  // 检测是否需要调整位置（针对边缘情况）
+  const target = event.currentTarget as HTMLElement
+  const rect = target.getBoundingClientRect()
+  const containerRect = containerRef.value?.getBoundingClientRect()
+  const menuWidth = 120
+
+  if (containerRect) {
+    // 如果书签在右侧区域，菜单改为右对齐
+    if (rect.right > containerRect.right - menuWidth) {
+      style = {
+        left: 'auto',
+        right: '0',
+        top: '100%',
+        marginTop: '8px'
+      }
+    }
+    // 如果书签在左侧区域，菜单改为左对齐
+    else if (rect.left < containerRect.left + menuWidth) {
+      style = {
+        left: '0',
+        right: 'auto',
+        top: '100%',
+        marginTop: '8px'
+      }
+    }
+  }
+
+  contextMenuStyle.value = style
   contextMenuVisible.value = true
 }
 
@@ -221,6 +259,7 @@ onUnmounted(() => {
           <div
             v-if="contextMenuVisible && contextMenuBookmark?.id === bookmark.id"
             class="context-menu"
+            :style="contextMenuStyle"
             @click.stop
           >
             <div class="context-menu-item" @click="openEditModal(bookmark)">
@@ -275,6 +314,7 @@ onUnmounted(() => {
   width: 100%;
   height: 216px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .bookmark-item {
@@ -362,16 +402,12 @@ onUnmounted(() => {
 /* 右键菜单样式 */
 .context-menu {
   position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
   z-index: 9999;
   background: var(--bg-white);
   border-radius: 8px;
   box-shadow: 0 4px 12px var(--bg-overlay-lighter);
   overflow: hidden;
   min-width: 120px;
-  margin-top: 8px;
 }
 
 .context-menu::before {
