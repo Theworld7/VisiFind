@@ -45,7 +45,6 @@ watch(
 )
 
 // 预览使用的值
-const previewBlur = computed(() => tempBlur.value)
 const previewMode = computed(() => tempInputMode.value)
 
 const backgroundFileInput = ref<HTMLInputElement | null>(null)
@@ -61,21 +60,6 @@ const handleBackgroundUpload = (event: Event) => {
     }
     reader.readAsDataURL(file)
   }
-}
-
-const setBackgroundUrlMode = () => {
-  tempInputMode.value = 'url'
-  // 如果 tempUrlInput 为空，但 props 有背景 URL 且不是上传模式，则使用它
-  if (!tempUrlInput.value && props.backgroundUrl && props.backgroundInputMode !== 'upload') {
-    tempUrlInput.value = props.backgroundUrl
-  }
-}
-
-const clearBackground = () => {
-  tempBackgroundUrl.value = ''
-  tempInputMode.value = 'none'
-  tempUrlInput.value = ''
-  tempBlur.value = 0
 }
 
 const close = () => {
@@ -101,24 +85,11 @@ const save = () => {
         <div class="modal-content">
           <h3>背景设置</h3>
           <div class="mode-switch">
-            <button
-              :class="{ active: previewMode === 'none' }"
-              @click="clearBackground"
-            >
-              无背景
-            </button>
-            <button
-              :class="{ active: previewMode === 'url' }"
-              @click="setBackgroundUrlMode"
-            >
-              在线图片
-            </button>
-            <button
-              :class="{ active: previewMode === 'upload' }"
-              @click="backgroundFileInput?.click()"
-            >
-              上传图片
-            </button>
+            <n-radio-group v-model:value="tempInputMode" name="backgroundType">
+              <n-radio-button value="none">无背景</n-radio-button>
+              <n-radio-button value="url">在线图片</n-radio-button>
+              <n-radio-button value="upload">上传图片</n-radio-button>
+            </n-radio-group>
             <input
               ref="backgroundFileInput"
               type="file"
@@ -137,11 +108,9 @@ const save = () => {
           <!-- URL输入 - 无背景模式不显示 -->
           <div v-if="previewMode !== 'none'" class="form-group">
             <label>图片URL</label>
-            <input
-              :value="tempUrlInput"
-              type="text"
+            <n-input
+              v-model:value="tempUrlInput"
               placeholder="输入图片链接（如 https://...）"
-              @input="tempUrlInput = ($event.target as HTMLInputElement).value"
             />
             <!-- URL预览 - 只在URL模式且有填写URL时显示 -->
             <div v-if="previewMode === 'url' && tempUrlInput" class="bg-preview" style="margin-top: 12px">
@@ -151,15 +120,15 @@ const save = () => {
           <!-- 模糊效果 -->
           <div v-if="previewMode !== 'none'" class="form-group">
             <label>模糊效果</label>
-            <select
-              :value="previewBlur"
-              @change="tempBlur = Number(($event.target as HTMLSelectElement).value)"
-            >
-              <option :value="0">无模糊</option>
-              <option :value="5">轻微模糊</option>
-              <option :value="10">中等模糊</option>
-              <option :value="20">强模糊</option>
-            </select>
+            <n-select
+              v-model:value="tempBlur"
+              :options="[
+                { label: '无模糊', value: 0 },
+                { label: '轻微模糊', value: 5 },
+                { label: '中等模糊', value: 10 },
+                { label: '强模糊', value: 20 }
+              ]"
+            />
           </div>
           <div class="modal-actions">
             <button class="btn-cancel" @click="close">取消</button>
@@ -203,27 +172,6 @@ const save = () => {
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
-}
-
-.mode-switch button {
-  flex: 1;
-  padding: 8px;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: #fff;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-}
-
-.mode-switch button:hover {
-  background: var(--bg-light);
-}
-
-.mode-switch button.active {
-  background: var(--primary-color);
-  color: #fff;
-  border-color: var(--primary-color);
 }
 
 .form-group {

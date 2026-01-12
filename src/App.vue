@@ -537,7 +537,9 @@ onUnmounted(() => {
   width: 100vw;
   height: 100vh;
   padding: 24px;
-  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   background-color: var(--bg-gradient-start);
   background-image: linear-gradient(
     135deg,
@@ -548,6 +550,7 @@ onUnmounted(() => {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  box-sizing: border-box;
 }
 
 .fullscreen.has-background {
@@ -590,15 +593,12 @@ onUnmounted(() => {
 }
 
 .search-container {
-  position: absolute;
-  top: 28%;
-  left: 50%;
-  transform: translateX(-50%);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   gap: 48px;
   width: 600px;
+  margin: auto;
 }
 
 .search-bar {
@@ -847,9 +847,6 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .fullscreen {
     padding: 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
   }
 
   .action-buttons {
@@ -860,10 +857,6 @@ onUnmounted(() => {
   }
 
   .search-container {
-    position: absolute;
-    top: 30%;
-    left: 50%;
-    transform: translateX(-50%);
     width: 100%;
     max-width: 360px;
     align-items: center;
