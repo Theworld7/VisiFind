@@ -7,6 +7,7 @@ import importIcon from '@/assets/icon-import.svg'
 import BookmarkGrid from '@/components/BookmarkGrid.vue'
 import EngineSelector from '@/components/EngineSelector.vue'
 import BackgroundSettings from '@/components/BackgroundSettings.vue'
+import BookmarkModal from '@/components/BookmarkModal.vue'
 
 interface Bookmark {
   id?: number
@@ -38,13 +39,7 @@ const bookmarks = ref<Bookmark[]>([])
 const db = ref<IDBDatabase | null>(null)
 const isModalOpen = ref(false)
 const modalMode = ref<'add' | 'edit'>('add')
-const editingBookmarkId = ref<number | null>(null)
-const formName = ref('')
-const formUrl = ref('')
-const formGroup = ref('')
-const formCustomIcon = ref('') // 自定义图标URL或base64
-const iconInputMode = ref<'none' | 'upload' | 'url'>('none')
-const iconFileInput = ref<HTMLInputElement | null>(null)
+const editingBookmark = ref<Bookmark | null>(null)
 
 // IndexedDB 相关函数
 const initDB = (): Promise<IDBDatabase> => {
@@ -221,72 +216,22 @@ const handleReorder = ( reorderedBookmarks: Bookmark[]) => {
 
 const openAddModal = () => {
   modalMode.value = 'add'
-  formName.value = ''
-  formUrl.value = ''
-  formGroup.value = ''
-  formCustomIcon.value = ''
-  iconInputMode.value = 'none'
+  editingBookmark.value = null
   isModalOpen.value = true
 }
 
 const openEditModal = (bookmark: Bookmark) => {
   modalMode.value = 'edit'
-  editingBookmarkId.value = bookmark.id ?? null
-  formName.value = bookmark.name
-  formUrl.value = bookmark.url
-  formGroup.value = bookmark.group || ''
-  formCustomIcon.value = bookmark.customIcon || ''
-  iconInputMode.value = bookmark.customIcon ? 'url' : 'none'
+  editingBookmark.value = bookmark
   isModalOpen.value = true
 }
 
-const closeModal = () => {
-  isModalOpen.value = false
-  editingBookmarkId.value = null
-}
-
-const saveBookmark = () => {
-  if (!formName.value.trim() || !formUrl.value.trim()) return
-
-  const bookmark: Bookmark = {
-    name: formName.value,
-    url: formUrl.value,
-    group: formGroup.value.trim() || undefined,
-    customIcon: formCustomIcon.value || undefined,
-  }
-
+const handleBookmarkSave = (data: Partial<Bookmark>) => {
   if (modalMode.value === 'add') {
-    addBookmark(bookmark)
-  } else if (editingBookmarkId.value !== null) {
-    updateBookmark(editingBookmarkId.value, bookmark)
+    addBookmark(data as Bookmark)
+  } else if (data.id) {
+    updateBookmark(data.id, data as Bookmark)
   }
-
-  closeModal()
-}
-
-// 处理图标文件上传
-const handleIconUpload = (event: Event) => {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      formCustomIcon.value = e.target?.result as string
-      iconInputMode.value = 'url'
-    }
-    reader.readAsDataURL(file)
-  }
-}
-
-// 设置图标URL模式
-const setIconUrlMode = () => {
-  iconInputMode.value = 'url'
-}
-
-// 清除自定义图标
-const clearCustomIcon = () => {
-  formCustomIcon.value = ''
-  iconInputMode.value = 'none'
 }
 
 // 处理背景设置保存
@@ -458,67 +403,13 @@ onUnmounted(() => {
       />
     </div>
 
-    <!-- 模态框 -->
-    <div v-if="isModalOpen" class="modal-overlay" @click="closeModal">
-      <div class="modal" @click.stop>
-        <h3 class="modal-title">{{ modalMode === 'add' ? '新增书签' : '编辑书签' }}</h3>
-        <div class="form-group">
-          <label>名称</label>
-          <input v-model="formName" type="text" placeholder="输入名称" />
-        </div>
-        <div class="form-group">
-          <label>网址</label>
-          <input v-model="formUrl" type="text" placeholder="https://..." />
-        </div>
-        <div class="form-group">
-          <label>分组</label>
-          <input v-model="formGroup" type="text" placeholder="输入分组名称（可选）" />
-        </div>
-        <div class="form-group">
-          <label>图标</label>
-          <div class="icon-input-container">
-            <div class="icon-mode-tabs">
-              <button :class="{ active: iconInputMode === 'none' }" @click="clearCustomIcon">
-                不使用
-              </button>
-              <button :class="{ active: iconInputMode === 'url' }" @click="setIconUrlMode">
-                在线图片
-              </button>
-              <button
-                :class="{ active: iconInputMode === 'upload' }"
-                @click="iconFileInput?.click()"
-              >
-                上传图片
-              </button>
-              <input
-                ref="iconFileInput"
-                type="file"
-                accept="image/*"
-                style="display: none"
-                @change="handleIconUpload"
-              />
-            </div>
-            <div v-if="iconInputMode === 'url'" class="icon-url-input">
-              <input
-                v-model="formCustomIcon"
-                type="text"
-                placeholder="输入图片URL（如 https://...）"
-              />
-              <div v-if="formCustomIcon" class="icon-preview">
-                <img :src="formCustomIcon" alt="预览" @error="clearCustomIcon" />
-              </div>
-            </div>
-            <div v-else-if="formCustomIcon" class="icon-preview">
-              <img :src="formCustomIcon" alt="预览" @error="clearCustomIcon" />
-            </div>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button class="btn-cancel" @click="closeModal">取消</button>
-          <button class="btn-save" @click="saveBookmark">保存</button>
-        </div>
-      </div>
-    </div>
+    <!-- 书签表单模态框 -->
+    <BookmarkModal
+      v-model:show="isModalOpen"
+      :mode="modalMode"
+      :bookmark="editingBookmark"
+      @save="handleBookmarkSave"
+    />
 
     <!-- 背景设置模态框 -->
     <BackgroundSettings
@@ -599,6 +490,8 @@ onUnmounted(() => {
   gap: 48px;
   width: 600px;
   margin: auto;
+  position: relative;
+  z-index: 1;
 }
 
 .search-bar {
@@ -655,181 +548,6 @@ onUnmounted(() => {
   filter: invert(1);
 }
 
-/* 模态框样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--bg-overlay);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal {
-  background: var(--bg-white);
-  border-radius: 12px;
-  padding: 24px;
-  width: 360px;
-  box-shadow: 0 4px 20px var(--bg-overlay);
-}
-
-.modal-title {
-  margin: 0 0 20px;
-  font-size: 18px;
-  color: var(--text-primary);
-}
-
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 6px;
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.form-group input[type='text'] {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  font-size: 14px;
-  outline: none;
-  box-sizing: border-box;
-}
-
-.form-group input[type='text']:focus {
-  border-color: var(--primary-color);
-}
-
-.form-group input[type='color'] {
-  width: 60px;
-  height: 36px;
-  border: none;
-  cursor: pointer;
-}
-
-.icon-input-container {
-  margin-top: 8px;
-}
-
-.icon-mode-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.icon-mode-tabs button {
-  padding: 6px 12px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-light);
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.icon-mode-tabs button.active {
-  background: linear-gradient(
-    135deg,
-    var(--bg-gradient-start) 0%,
-    var(--bg-gradient-mid) 50%,
-    var(--bg-gradient-end) 100%
-  );
-  color: var(--text-white);
-  border-color: transparent;
-}
-
-.bg-preview {
-  width: 100%;
-  height: 120px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid var(--border-color);
-}
-
-.bg-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.icon-url-input {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.icon-url-input input[type='text'] {
-  flex: 1;
-}
-
-.icon-preview {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-
-.icon-preview img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 24px;
-}
-
-.btn-cancel,
-.btn-save {
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-cancel {
-  background: var(--bg-light);
-  border: none;
-  color: var(--text-secondary);
-}
-
-.btn-cancel:hover {
-  background: var(--bg-lighter);
-}
-
-.btn-save {
-  background: linear-gradient(
-    135deg,
-    var(--bg-gradient-start) 0%,
-    var(--bg-gradient-mid) 50%,
-    var(--bg-gradient-end) 100%
-  );
-  border: none;
-  color: var(--text-white);
-}
-
-.btn-save:hover {
-  background: linear-gradient(
-    135deg,
-    var(--bg-gradient-start) 0%,
-    var(--bg-gradient-mid) 65%,
-    var(--bg-gradient-end) 100%
-  );
-}
-
 .fullscreen::before {
   content: '';
   position: absolute;
@@ -865,22 +583,6 @@ onUnmounted(() => {
 
   .search-bar {
     gap: 6px;
-  }
-
-  .modal {
-    width: calc(100% - 32px);
-    max-width: 320px;
-    padding: 20px;
-  }
-
-  .icon-mode-tabs {
-    flex-wrap: wrap;
-  }
-
-  .icon-mode-tabs button {
-    flex: 1;
-    min-width: 70px;
-    text-align: center;
   }
 }
 

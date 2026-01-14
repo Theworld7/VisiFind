@@ -106,12 +106,6 @@ const handleDrop = (event: DragEvent, targetIndex: number) => {
   handleDragEnd()
 }
 
-// 检测是否可以滚动
-const canScroll = computed(() => {
-  if (!containerRef.value) return false
-  return containerRef.value.scrollHeight > containerRef.value.clientHeight
-})
-
 // 从书签中提取所有分组
 const groups = computed(() => {
   const groupSet = new Set<string>()
@@ -218,64 +212,66 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div ref="containerRef" class="bookmark-container" :class="{ 'can-scroll': canScroll }">
-    <div class="bookmark-grid">
-      <div class="bookmark-item">
-        <div class="bookmark-icon-wrapper add-btn" @click="openAddModal">
-          <img :src="addIcon" class="action-icon" alt="新增" />
+  <div ref="containerRef" class="bookmark-wrapper">
+    <div class="bookmark-grid-container">
+      <div class="bookmark-grid">
+        <div class="bookmark-item">
+          <div class="bookmark-icon-wrapper add-btn" @click="openAddModal">
+            <img :src="addIcon" class="action-icon" alt="新增" />
+          </div>
+          <span class="bookmark-name">新增</span>
         </div>
-        <span class="bookmark-name">新增</span>
-      </div>
-      <div
-        v-for="(bookmark, index) in filteredBookmarks"
-        :key="bookmark.id"
-        class="bookmark-item"
-        :class="{ 'dragging': draggedIndex === index, 'drag-over': dragOverIndex === index }"
-        draggable="true"
-        @dragstart="handleDragStart($event, index)"
-        @dragover="handleDragOver($event, index)"
-        @dragleave="handleDragLeave"
-        @dragend="handleDragEnd"
-        @drop="handleDrop($event, index)"
-      >
         <div
-          class="bookmark-icon-wrapper"
-          @click="openBookmark(bookmark.url)"
-          @contextmenu="showContextMenu($event, bookmark)"
+          v-for="(bookmark, index) in filteredBookmarks"
+          :key="bookmark.id"
+          class="bookmark-item"
+          :class="{ 'dragging': draggedIndex === index, 'drag-over': dragOverIndex === index }"
+          draggable="true"
+          @dragstart="handleDragStart($event, index)"
+          @dragover="handleDragOver($event, index)"
+          @dragleave="handleDragLeave"
+          @dragend="handleDragEnd"
+          @drop="handleDrop($event, index)"
         >
-          <!-- 优先显示自定义图标 -->
-          <img
-            v-if="bookmark.customIcon"
-            :src="bookmark.customIcon"
-            class="bookmark-favicon"
-            alt=""
-          />
-          <!-- 默认显示首字符 -->
-          <div v-else class="bookmark-icon">
-            {{ bookmark.name.charAt(0) }}
-          </div>
-
-          <!-- 右键菜单 -->
           <div
-            v-if="contextMenuVisible && contextMenuBookmark?.id === bookmark.id"
-            class="context-menu"
-            :style="contextMenuStyle"
-            @click.stop
+            class="bookmark-icon-wrapper"
+            @click="openBookmark(bookmark.url)"
+            @contextmenu="showContextMenu($event, bookmark)"
           >
-            <div class="context-menu-item" @click="openEditModal(bookmark)">
-              <img :src="editIcon" class="menu-icon" alt="" />
-              <span>编辑</span>
+            <!-- 优先显示自定义图标 -->
+            <img
+              v-if="bookmark.customIcon"
+              :src="bookmark.customIcon"
+              class="bookmark-favicon"
+              alt=""
+            />
+            <!-- 默认显示首字符 -->
+            <div v-else class="bookmark-icon">
+              {{ bookmark.name.charAt(0) }}
             </div>
+
+            <!-- 右键菜单 -->
             <div
-              class="context-menu-item danger"
-              @click="bookmark.id && deleteBookmark(bookmark.id)"
+              v-if="contextMenuVisible && contextMenuBookmark?.id === bookmark.id"
+              class="context-menu"
+              :style="contextMenuStyle"
+              @click.stop
             >
-              <img :src="deleteIcon" class="menu-icon" alt="" />
-              <span>删除</span>
+              <div class="context-menu-item" @click="openEditModal(bookmark)">
+                <img :src="editIcon" class="menu-icon" alt="" />
+                <span>编辑</span>
+              </div>
+              <div
+                class="context-menu-item danger"
+                @click="bookmark.id && deleteBookmark(bookmark.id)"
+              >
+                <img :src="deleteIcon" class="menu-icon" alt="" />
+                <span>删除</span>
+              </div>
             </div>
           </div>
+          <span class="bookmark-name">{{ bookmark.name }}</span>
         </div>
-        <span class="bookmark-name">{{ bookmark.name }}</span>
       </div>
     </div>
 
@@ -299,11 +295,19 @@ onUnmounted(() => {
 <style scoped>
 /* 引入全局 CSS 变量 */
 
-.bookmark-container {
+.bookmark-wrapper {
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  position: relative;
+  z-index: 1;
+}
+
+/* 网格容器 - 包含遮罩和网格 */
+.bookmark-grid-container {
+  position: relative;
+  height: 216px;
 }
 
 .bookmark-grid {
@@ -312,9 +316,18 @@ onUnmounted(() => {
   grid-auto-rows: 72px;
   gap: 12px;
   width: 100%;
-  height: 216px;
+  height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
+  /* 顶部和底部渐变遮罩 */
+  mask-image:
+    linear-gradient(to bottom, transparent 0%, black 12px),
+    linear-gradient(to top, transparent 0%, black 12px);
+  -webkit-mask-image:
+    linear-gradient(to bottom, transparent 0%, black 12px),
+    linear-gradient(to top, transparent 0%, black 12px);
+  mask-composite: intersect;
+  -webkit-mask-composite: intersect;
 }
 
 .bookmark-item {
@@ -500,33 +513,31 @@ onUnmounted(() => {
 
 /* 手机适配 */
 @media (max-width: 768px) {
-  .bookmark-container {
+  .bookmark-wrapper {
     max-height: calc((48px + 8px + 11px) * 5);
     overflow-y: auto;
     overflow-x: hidden;
   }
 
   /* 隐藏滚动条 */
-  .bookmark-container {
+  .bookmark-wrapper {
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
 
-  .bookmark-container::-webkit-scrollbar {
+  .bookmark-wrapper::-webkit-scrollbar {
     display: none;
   }
 
-  /* 可以滚动时显示遮罩 */
-  .can-scroll .bookmark-grid {
-    mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+  .bookmark-grid-container {
+    height: calc((64px + 10px + 11px) * 4);
   }
 
   .bookmark-grid {
     grid-template-columns: repeat(4, 1fr);
     grid-auto-rows: 64px;
     gap: 10px;
-    height: 320px;
+    height: 100%;
   }
 
   .bookmark-icon-wrapper {
