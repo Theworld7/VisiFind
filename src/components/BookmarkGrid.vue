@@ -30,6 +30,41 @@ const contextMenuStyle = ref<Record<string, string>>({})
 const currentGroup = ref('默认')
 const containerRef = ref<HTMLElement | null>(null)
 
+// 滚动状态
+const isAtTop = ref(true)
+const isAtBottom = ref(true)
+
+// 处理滚动
+const handleScroll = () => {
+  const gridEl = containerRef.value?.querySelector('.bookmark-grid') as HTMLElement
+  if (!gridEl) return
+  isAtTop.value = gridEl.scrollTop === 0
+  isAtBottom.value = gridEl.scrollTop + gridEl.clientHeight >= gridEl.scrollHeight - 1
+}
+
+// 动态遮罩样式
+const maskStyle = computed(() => {
+  const masks: string[] = []
+
+  if (!isAtTop.value) {
+    masks.push('linear-gradient(to bottom, transparent 0%, black 12px)')
+  }
+  if (!isAtBottom.value) {
+    masks.push('linear-gradient(to top, transparent 0%, black 12px)')
+  }
+
+  if (masks.length === 0) {
+    return {}
+  }
+
+  return {
+    maskImage: masks.join(', '),
+    WebkitMaskImage: masks.join(', '),
+    maskComposite: 'intersect',
+    WebkitMaskComposite: 'intersect',
+  }
+})
+
 // 拖拽相关状态
 const draggedIndex = ref<number | null>(null)
 const dragOverIndex = ref<number | null>(null)
@@ -204,17 +239,21 @@ const handleClickOutside = (event: MouseEvent) => {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  const gridEl = containerRef.value?.querySelector('.bookmark-grid') as HTMLElement
+  gridEl?.addEventListener('scroll', handleScroll)
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  const gridEl = containerRef.value?.querySelector('.bookmark-grid') as HTMLElement
+  gridEl?.removeEventListener('scroll', handleScroll)
 })
 </script>
 
 <template>
   <div ref="containerRef" class="bookmark-wrapper">
     <div class="bookmark-grid-container">
-      <div class="bookmark-grid">
+      <div class="bookmark-grid" :style="maskStyle">
         <div class="bookmark-item">
           <div class="bookmark-icon-wrapper add-btn" @click="openAddModal">
             <img :src="addIcon" class="action-icon" alt="新增" />
@@ -319,15 +358,12 @@ onUnmounted(() => {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
-  /* 顶部和底部渐变遮罩 */
-  mask-image:
-    linear-gradient(to bottom, transparent 0%, black 12px),
-    linear-gradient(to top, transparent 0%, black 12px);
-  -webkit-mask-image:
-    linear-gradient(to bottom, transparent 0%, black 12px),
-    linear-gradient(to top, transparent 0%, black 12px);
-  mask-composite: intersect;
-  -webkit-mask-composite: intersect;
+  /* 隐藏滚动条 */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .bookmark-item {
@@ -514,30 +550,26 @@ onUnmounted(() => {
 /* 手机适配 */
 @media (max-width: 768px) {
   .bookmark-wrapper {
-    max-height: calc((48px + 8px + 11px) * 5);
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
-  /* 隐藏滚动条 */
-  .bookmark-wrapper {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-
-  .bookmark-wrapper::-webkit-scrollbar {
-    display: none;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow: hidden;
   }
 
   .bookmark-grid-container {
-    height: calc((64px + 10px + 11px) * 4);
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
 
   .bookmark-grid {
+    flex: 1;
+    min-height: 0;
     grid-template-columns: repeat(4, 1fr);
     grid-auto-rows: 64px;
     gap: 10px;
-    height: 100%;
   }
 
   .bookmark-icon-wrapper {
@@ -554,6 +586,11 @@ onUnmounted(() => {
     max-width: 60px;
   }
 
+  .group-tabs {
+    flex-shrink: 0;
+    padding: 4px 0;
+  }
+
   .group-tabs-inner {
     padding: 4px;
     gap: 6px;
@@ -561,7 +598,7 @@ onUnmounted(() => {
   }
 
   .group-tab {
-    padding: 6px 12px;
+    padding: 6px 10px;
     font-size: 12px;
   }
 }
