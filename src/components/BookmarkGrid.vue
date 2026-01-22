@@ -130,8 +130,8 @@ const handleDrop = (event: DragEvent, targetIndex: number) => {
       currentGroup.value === '默认'
         ? !bookmark.group || !bookmark.group.trim()
         : bookmark.group === currentGroup.value
-    if (isInCurrentGroup) {
-      bookmarks[i] = currentGroupBookmarks[groupIndex]
+    if (isInCurrentGroup && currentGroupBookmarks[groupIndex]) {
+      bookmarks[i] = currentGroupBookmarks[groupIndex]!
       groupIndex++
     }
   })
