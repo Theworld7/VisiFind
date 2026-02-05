@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import { NDrawer, NDrawerContent, NButton, NDivider } from 'naive-ui'
 import '@/styles/variables.css'
 import searchIcon from '@/assets/icon-search.svg'
-import exportIcon from '@/assets/icon-export.svg'
-import importIcon from '@/assets/icon-import.svg'
+import settingIcon from '@/assets/setting.svg'
 import BookmarkGrid from '@/components/BookmarkGrid.vue'
 import EngineSelector from '@/components/EngineSelector.vue'
 import BackgroundSettings from '@/components/BackgroundSettings.vue'
@@ -22,6 +22,56 @@ const backgroundInputMode = ref<'none' | 'upload' | 'url'>('none')
 const showBackgroundModal = ref(false)
 const backgroundUrlInput = ref('')
 const backgroundBlur = ref(0)
+
+const showSettingsDrawer = ref(false)
+
+// 抽屉设置表单数据
+const formValue = ref({
+  mode: 'none' as 'none' | 'upload' | 'url',
+  url: '',
+  blur: 0,
+})
+
+const tempBackgroundUrl = ref('')
+const backgroundFileInput = ref<HTMLInputElement | null>(null)
+
+const selectFileButtonText = computed(() => (tempBackgroundUrl.value ? '重新选择图片' : '选择图片'))
+
+const triggerFileInput = () => {
+  backgroundFileInput.value?.click()
+}
+
+const handleBackgroundUpload = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      tempBackgroundUrl.value = e.target?.result as string
+      formValue.value.mode = 'upload'
+    }
+    reader.readAsDataURL(file)
+  }
+}
+
+const applySettings = () => {
+  const url = formValue.value.mode === 'url' ? formValue.value.url : tempBackgroundUrl.value
+  backgroundUrl.value = url
+  backgroundInputMode.value = formValue.value.mode
+  backgroundBlur.value = formValue.value.blur
+  saveBackgroundSettings()
+  showSettingsDrawer.value = false
+}
+
+// 监听抽屉打开，同步初始值
+watch(showSettingsDrawer, (val) => {
+  if (val) {
+    tempBackgroundUrl.value = backgroundUrl.value
+    formValue.value.mode = backgroundInputMode.value
+    formValue.value.url = backgroundInputMode.value === 'url' ? backgroundUrl.value : ''
+    formValue.value.blur = backgroundBlur.value
+  }
+})
 
 const backgroundStyle = computed(() => {
   const style: Record<string, string> = {}
@@ -210,7 +260,7 @@ const openBookmark = (url: string) => {
 }
 
 // 处理书签排序
-const handleReorder = ( reorderedBookmarks: Bookmark[]) => {
+const handleReorder = (reorderedBookmarks: Bookmark[]) => {
   bookmarks.value = reorderedBookmarks
 }
 
@@ -292,7 +342,9 @@ const importData = (event: Event) => {
         let importCount = 0
         for (const bookmark of data.bookmarks) {
           if (!existingNames.has(bookmark.name.toLowerCase())) {
-            await addBookmark(bookmark)
+            // 移除ID字段，让数据库自动生成新ID
+            const { id, ...bookmarkWithoutId } = bookmark
+            await addBookmark(bookmarkWithoutId)
             existingNames.add(bookmark.name.toLowerCase())
             importCount++
           }
@@ -343,37 +395,10 @@ onUnmounted(() => {
   <div class="fullscreen" :class="{ 'has-background': backgroundUrl }" :style="backgroundStyle">
     <!-- 右上角操作按钮 -->
     <div class="action-buttons">
-      <!-- 背景设置按钮 -->
-      <button class="action-btn" @click="showBackgroundModal = true" title="设置背景">
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-        >
-          <circle cx="12" cy="12" r="3" />
-          <path
-            d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"
-          />
-        </svg>
+      <!-- 设置按钮 -->
+      <button class="action-btn" @click="showSettingsDrawer = true" title="设置">
+        <img :src="settingIcon" alt="设置" />
       </button>
-      <!-- 导入按钮 -->
-      <button class="action-btn" @click="triggerImport" title="导入恢复">
-        <img :src="importIcon" alt="导入" />
-      </button>
-      <!-- 导出按钮 -->
-      <button class="action-btn" @click="exportData" title="导出备份">
-        <img :src="exportIcon" alt="导出" />
-      </button>
-      <input
-        ref="importFileInput"
-        type="file"
-        accept=".json"
-        style="display: none"
-        @change="importData"
-      />
     </div>
 
     <div class="search-container">
@@ -420,6 +445,86 @@ onUnmounted(() => {
       v-model:background-blur="backgroundBlur"
       @save="handleBackgroundSave"
     />
+
+    <!-- 设置抽屉 -->
+    <NDrawer v-model:show="showSettingsDrawer" :width="400" placement="right">
+      <NDrawerContent title="设置" closable>
+        <n-form ref="formRef" :model="formValue">
+          <!-- 背景模式选择 -->
+          <n-form-item label="背景模式" path="mode">
+            <div class="mode-switch">
+              <n-radio-group v-model:value="formValue.mode" name="backgroundType">
+                <n-radio-button value="none">无背景</n-radio-button>
+                <n-radio-button value="url">在线图片</n-radio-button>
+                <n-radio-button value="upload">上传图片</n-radio-button>
+              </n-radio-group>
+            </div>
+          </n-form-item>
+          <!-- 选择图片按钮 - 上传模式显示 -->
+          <n-form-item v-if="formValue.mode === 'upload'" label="选择图片">
+            <n-button @click="triggerFileInput">{{ selectFileButtonText }}</n-button>
+            <input
+              ref="backgroundFileInput"
+              type="file"
+              accept="image/*"
+              style="display: none"
+              @change="handleBackgroundUpload"
+            />
+          </n-form-item>
+          <!-- 上传预览 - 上传模式且有图片时显示 -->
+          <div v-if="formValue.mode === 'upload' && tempBackgroundUrl" class="form-group">
+            <div class="form-label">预览</div>
+            <div class="bg-preview">
+              <img :src="tempBackgroundUrl" alt="背景预览" />
+            </div>
+          </div>
+          <!-- URL输入 - 在线图片模式显示 -->
+          <n-form-item v-if="formValue.mode === 'url'" label="图片URL" path="url">
+            <n-input v-model:value="formValue.url" placeholder="输入图片链接（如 https://...）" />
+          </n-form-item>
+          <!-- URL预览 - 在线图片模式且有URL时显示 -->
+          <n-form-item v-if="formValue.mode === 'url' && formValue.url" path="url">
+            <div class="bg-preview">
+              <img :src="formValue.url" alt="背景预览" />
+            </div>
+          </n-form-item>
+          <!-- 模糊效果 - 非无背景模式显示 -->
+          <n-form-item v-if="formValue.mode !== 'none'" label="模糊效果" path="blur">
+            <n-select
+              v-model:value="formValue.blur"
+              :options="[
+                { label: '无模糊', value: 0 },
+                { label: '轻微模糊', value: 5 },
+                { label: '中等模糊', value: 10 },
+                { label: '强模糊', value: 20 },
+              ]"
+            />
+          </n-form-item>
+        </n-form>
+
+        <n-divider />
+
+        <n-space vertical>
+          <n-button block @click="triggerImport"> 导入备份 </n-button>
+          <n-button block @click="exportData"> 导出备份 </n-button>
+        </n-space>
+
+        <input
+          ref="importFileInput"
+          type="file"
+          accept=".json"
+          style="display: none"
+          @change="importData"
+        />
+
+        <template #footer>
+          <n-space reverse>
+            <n-button type="primary" @click="applySettings">应用</n-button>
+            <n-button @click="showSettingsDrawer = false">关闭</n-button>
+          </n-space>
+        </template>
+      </NDrawerContent>
+    </NDrawer>
   </div>
 </template>
 
@@ -593,5 +698,19 @@ onUnmounted(() => {
     padding: 0 16px;
     box-sizing: border-box;
   }
+}
+
+.bg-preview {
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-light);
+}
+
+.bg-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 </style>

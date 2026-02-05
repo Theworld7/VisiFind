@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, h } from 'vue'
+import { NDropdown } from 'naive-ui'
 import addIcon from '@/assets/icon-add.svg'
 import editIcon from '@/assets/icon-edit.svg'
 import deleteIcon from '@/assets/icon-delete.svg'
@@ -26,9 +27,24 @@ const emit = defineEmits<{
 
 const contextMenuVisible = ref(false)
 const contextMenuBookmark = ref<Bookmark | null>(null)
-const contextMenuStyle = ref<Record<string, string>>({})
+const contextMenuX = ref(0)
+const contextMenuY = ref(0)
 const currentGroup = ref('默认')
 const containerRef = ref<HTMLElement | null>(null)
+
+const menuOptions = [
+  {
+    label: '编辑',
+    key: 'edit',
+    icon: () => h('img', { src: editIcon, style: { width: '16px', height: '16px' } }),
+  },
+  {
+    label: '删除',
+    key: 'delete',
+    icon: () => h('img', { src: deleteIcon, style: { width: '16px', height: '16px' } }),
+    props: { class: 'danger' },
+  },
+]
 
 // 滚动状态
 const isAtTop = ref(true)
@@ -108,9 +124,7 @@ const handleDrop = (event: DragEvent, targetIndex: number) => {
   // 复制完整书签数组
   const bookmarks = [...props.bookmarks]
   const currentGroupBookmarks = bookmarks.filter((b) =>
-    currentGroup.value === '默认'
-      ? !b.group || !b.group.trim()
-      : b.group === currentGroup.value
+    currentGroup.value === '默认' ? !b.group || !b.group.trim() : b.group === currentGroup.value,
   )
 
   const draggedBookmark = currentGroupBookmarks[draggedIndex.value]
@@ -187,43 +201,8 @@ const showContextMenu = (event: MouseEvent, bookmark: Bookmark) => {
   event.preventDefault()
   event.stopPropagation()
   contextMenuBookmark.value = bookmark
-
-  // 默认居中定位
-  let style: Record<string, string> = {
-    left: '50%',
-    top: '100%',
-    transform: 'translateX(-50%)',
-    marginTop: '8px'
-  }
-
-  // 检测是否需要调整位置（针对边缘情况）
-  const target = event.currentTarget as HTMLElement
-  const rect = target.getBoundingClientRect()
-  const containerRect = containerRef.value?.getBoundingClientRect()
-  const menuWidth = 120
-
-  if (containerRect) {
-    // 如果书签在右侧区域，菜单改为右对齐
-    if (rect.right > containerRect.right - menuWidth) {
-      style = {
-        left: 'auto',
-        right: '0',
-        top: '100%',
-        marginTop: '8px'
-      }
-    }
-    // 如果书签在左侧区域，菜单改为左对齐
-    else if (rect.left < containerRect.left + menuWidth) {
-      style = {
-        left: '0',
-        right: 'auto',
-        top: '100%',
-        marginTop: '8px'
-      }
-    }
-  }
-
-  contextMenuStyle.value = style
+  contextMenuX.value = event.clientX
+  contextMenuY.value = event.clientY
   contextMenuVisible.value = true
 }
 
@@ -232,19 +211,24 @@ const closeContextMenu = () => {
   contextMenuBookmark.value = null
 }
 
-const handleClickOutside = (event: MouseEvent) => {
-  if (event.type !== 'click') return
+const handleContextMenuSelect = (key: string | number) => {
+  const bookmark = contextMenuBookmark.value
+  if (!bookmark) return
+
+  if (key === 'edit') {
+    openEditModal(bookmark)
+  } else if (key === 'delete' && bookmark.id) {
+    deleteBookmark(bookmark.id)
+  }
   closeContextMenu()
 }
 
 onMounted(() => {
-  document.addEventListener('click', handleClickOutside)
   const gridEl = containerRef.value?.querySelector('.bookmark-grid') as HTMLElement
   gridEl?.addEventListener('scroll', handleScroll)
 })
 
 onUnmounted(() => {
-  document.removeEventListener('click', handleClickOutside)
   const gridEl = containerRef.value?.querySelector('.bookmark-grid') as HTMLElement
   gridEl?.removeEventListener('scroll', handleScroll)
 })
@@ -264,7 +248,7 @@ onUnmounted(() => {
           v-for="(bookmark, index) in filteredBookmarks"
           :key="bookmark.id"
           class="bookmark-item"
-          :class="{ 'dragging': draggedIndex === index, 'drag-over': dragOverIndex === index }"
+          :class="{ dragging: draggedIndex === index, 'drag-over': dragOverIndex === index }"
           draggable="true"
           @dragstart="handleDragStart($event, index)"
           @dragover="handleDragOver($event, index)"
@@ -288,31 +272,23 @@ onUnmounted(() => {
             <div v-else class="bookmark-icon">
               {{ bookmark.name.charAt(0) }}
             </div>
-
-            <!-- 右键菜单 -->
-            <div
-              v-if="contextMenuVisible && contextMenuBookmark?.id === bookmark.id"
-              class="context-menu"
-              :style="contextMenuStyle"
-              @click.stop
-            >
-              <div class="context-menu-item" @click="openEditModal(bookmark)">
-                <img :src="editIcon" class="menu-icon" alt="" />
-                <span>编辑</span>
-              </div>
-              <div
-                class="context-menu-item danger"
-                @click="bookmark.id && deleteBookmark(bookmark.id)"
-              >
-                <img :src="deleteIcon" class="menu-icon" alt="" />
-                <span>删除</span>
-              </div>
-            </div>
           </div>
           <span class="bookmark-name">{{ bookmark.name }}</span>
         </div>
       </div>
     </div>
+
+    <!-- 右键菜单 -->
+    <NDropdown
+      placement="bottom-start"
+      trigger="manual"
+      :x="contextMenuX"
+      :y="contextMenuY"
+      :options="menuOptions"
+      :show="contextMenuVisible"
+      @select="handleContextMenuSelect"
+      @clickoutside="closeContextMenu"
+    />
 
     <!-- 分组切换器 -->
     <div class="group-tabs">
@@ -328,6 +304,18 @@ onUnmounted(() => {
         </button>
       </div>
     </div>
+
+    <!-- 右键菜单 -->
+    <NDropdown
+      placement="bottom-start"
+      trigger="manual"
+      :x="contextMenuX"
+      :y="contextMenuY"
+      :options="menuOptions"
+      :show="contextMenuVisible"
+      @select="handleContextMenuSelect"
+      @clickoutside="closeContextMenu"
+    />
   </div>
 </template>
 
@@ -372,7 +360,9 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  transition: transform 0.2s, background 0.2s;
+  transition:
+    transform 0.2s,
+    background 0.2s;
   padding: 4px;
   border-radius: 12px;
 }
@@ -446,64 +436,6 @@ onUnmounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* 右键菜单样式 */
-.context-menu {
-  position: absolute;
-  z-index: 9999;
-  background: var(--bg-white);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px var(--bg-overlay-lighter);
-  overflow: hidden;
-  min-width: 120px;
-}
-
-.context-menu::before {
-  content: '';
-  position: absolute;
-  top: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-bottom: 8px solid var(--bg-white);
-}
-
-.context-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  cursor: pointer;
-  transition: background 0.2s;
-  font-size: 14px;
-  color: var(--text-primary);
-}
-
-.context-menu-item:first-child {
-  border-radius: 8px 8px 0 0;
-}
-
-.context-menu-item:last-child {
-  border-radius: 0 0 8px 8px;
-}
-
-.context-menu-item:hover {
-  background: var(--bg-light);
-}
-
-.context-menu-item.danger {
-  color: var(--danger-color);
-}
-
-.context-menu-item.danger:hover {
-  background: var(--hover-bg-light);
-}
-
-.menu-icon {
-  width: 16px;
-  height: 16px;
 }
 
 /* 分组切换器 */
