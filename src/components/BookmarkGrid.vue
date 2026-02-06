@@ -304,18 +304,6 @@ onUnmounted(() => {
         </button>
       </div>
     </div>
-
-    <!-- 右键菜单 -->
-    <NDropdown
-      placement="bottom-start"
-      trigger="manual"
-      :x="contextMenuX"
-      :y="contextMenuY"
-      :options="menuOptions"
-      :show="contextMenuVisible"
-      @select="handleContextMenuSelect"
-      @clickoutside="closeContextMenu"
-    />
   </div>
 </template>
 
