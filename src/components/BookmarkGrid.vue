@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed, h } from 'vue'
-import { NDropdown } from 'naive-ui'
+import { NDropdown, NTooltip } from 'naive-ui'
 import addIcon from '@/assets/icon-add.svg'
 import editIcon from '@/assets/icon-edit.svg'
 import deleteIcon from '@/assets/icon-delete.svg'
@@ -11,6 +11,7 @@ interface Bookmark {
   url: string
   customIcon?: string
   group?: string
+  description?: string
 }
 
 const props = defineProps<{
@@ -273,7 +274,13 @@ onUnmounted(() => {
               {{ bookmark.name.charAt(0) }}
             </div>
           </div>
-          <span class="bookmark-name">{{ bookmark.name }}</span>
+          <n-tooltip v-if="bookmark.description" trigger="hover">
+            <template #trigger>
+              <span class="bookmark-name">{{ bookmark.name }}</span>
+            </template>
+            {{ bookmark.description }}
+          </n-tooltip>
+          <span v-else class="bookmark-name">{{ bookmark.name }}</span>
         </div>
       </div>
     </div>
@@ -420,7 +427,7 @@ onUnmounted(() => {
   color: var(--text-white);
   text-shadow: 0 1px 4px var(--bg-overlay-lighter);
   text-align: center;
-  max-width: 80px;
+  max-width: 56px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

@@ -15,6 +15,7 @@ interface Bookmark {
   url: string
   customIcon?: string // 自定义图标（base64或URL）
   group?: string
+  description?: string
 }
 
 const backgroundUrl = ref('')

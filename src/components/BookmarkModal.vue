@@ -8,6 +8,7 @@ interface Bookmark {
   url: string
   customIcon?: string
   group?: string
+  description?: string
 }
 
 interface Props {
@@ -50,6 +51,7 @@ const formValue = ref({
   url: '',
   group: '',
   icon: '',
+  description: '',
 })
 
 // 图标相关状态
@@ -69,13 +71,14 @@ watch(
         formValue.value.url = props.bookmark.url || ''
         formValue.value.group = props.bookmark.group || ''
         formValue.value.icon = props.bookmark.customIcon || ''
+        formValue.value.description = props.bookmark.description || ''
         iconInputMode.value = props.bookmark.customIcon ? 'upload' : 'none'
-      }
-      else {
+      } else {
         formValue.value.name = ''
         formValue.value.url = ''
         formValue.value.group = ''
         formValue.value.icon = ''
+        formValue.value.description = ''
         iconInputMode.value = 'none'
       }
     }
@@ -125,6 +128,7 @@ const save = () => {
     url: formValue.value.url,
     group: formValue.value.group || undefined,
     customIcon: formValue.value.icon || undefined,
+    description: formValue.value.description || undefined,
   }
   if (props.mode === 'edit' && props.bookmark?.id) {
     data.id = props.bookmark.id
@@ -135,7 +139,13 @@ const save = () => {
 </script>
 
 <template>
-  <n-modal :show="localShow" preset="card" :title="modalTitle" style="width: 420px" @update:show="updateShow">
+  <n-modal
+    :show="localShow"
+    preset="card"
+    :title="modalTitle"
+    style="width: 420px"
+    @update:show="updateShow"
+  >
     <n-form ref="formRef" :model="formValue">
       <n-form-item label="名称" path="name" :rule="{ required: true, message: '请输入名称' }">
         <n-input v-model:value="formValue.name" placeholder="输入名称" />
@@ -145,6 +155,14 @@ const save = () => {
       </n-form-item>
       <n-form-item label="分组" path="group">
         <n-input v-model:value="formValue.group" placeholder="输入分组名称（可选）" />
+      </n-form-item>
+      <n-form-item label="描述" path="description">
+        <n-input
+          v-model:value="formValue.description"
+          type="textarea"
+          placeholder="输入描述（可选）"
+          :rows="2"
+        />
       </n-form-item>
       <n-form-item label="图标" path="icon">
         <div class="icon-input-container">
@@ -179,10 +197,7 @@ const save = () => {
             />
           </div>
           <div v-if="iconInputMode === 'url'" class="icon-url-input">
-            <n-input
-              v-model:value="formValue.icon"
-              placeholder="输入图片URL（如 https://...）"
-            />
+            <n-input v-model:value="formValue.icon" placeholder="输入图片URL（如 https://...）" />
             <div v-if="formValue.icon" class="icon-preview">
               <img :src="formValue.icon" alt="预览" @error="clearCustomIcon" />
             </div>
