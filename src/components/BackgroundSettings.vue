@@ -5,20 +5,27 @@ import type { FormInst } from 'naive-ui'
 interface Props {
   show: boolean
   backgroundUrl: string
-  backgroundInputMode: 'none' | 'upload' | 'url'
+  backgroundInputMode: 'color' | 'upload' | 'url'
   backgroundUrlInput: string
   backgroundBlur: number
+  backgroundColor: string
 }
 
 interface Emits {
   (e: 'update:show', value: boolean): void
   (e: 'update:backgroundUrl', value: string): void
-  (e: 'update:backgroundInputMode', value: 'none' | 'upload' | 'url'): void
+  (e: 'update:backgroundInputMode', value: 'color' | 'upload' | 'url'): void
   (e: 'update:backgroundUrlInput', value: string): void
   (e: 'update:backgroundBlur', value: number): void
+  (e: 'update:backgroundColor', value: string): void
   (
     e: 'save',
-    data: { backgroundUrl: string; backgroundInputMode: string; backgroundBlur: number },
+    data: {
+      backgroundUrl: string
+      backgroundInputMode: string
+      backgroundBlur: number
+      backgroundColor: string
+    },
   ): void
 }
 
@@ -27,9 +34,10 @@ const emit = defineEmits<Emits>()
 
 // 表单数据
 const formValue = ref({
-  mode: 'none' as 'none' | 'upload' | 'url',
+  mode: 'color' as 'color' | 'upload' | 'url',
   url: '',
   blur: 0,
+  color: '#1a1a2e',
 })
 
 // 临时变量，用于上传图片数据
@@ -50,6 +58,7 @@ watch(
       formValue.value.mode = props.backgroundInputMode
       formValue.value.url = props.backgroundInputMode === 'url' ? props.backgroundUrl : ''
       formValue.value.blur = props.backgroundBlur
+      formValue.value.color = props.backgroundColor
     }
   },
 )
@@ -83,6 +92,7 @@ const save = () => {
     backgroundUrl: url,
     backgroundInputMode: formValue.value.mode,
     backgroundBlur: formValue.value.blur,
+    backgroundColor: formValue.value.color,
   })
 }
 </script>
@@ -94,12 +104,26 @@ const save = () => {
       <n-form-item label="背景模式" path="mode">
         <div class="mode-switch">
           <n-radio-group v-model:value="formValue.mode" name="backgroundType">
-            <n-radio-button value="none">无背景</n-radio-button>
+            <n-radio-button value="color">色彩背景</n-radio-button>
             <n-radio-button value="url">在线图片</n-radio-button>
             <n-radio-button value="upload">上传图片</n-radio-button>
           </n-radio-group>
         </div>
       </n-form-item>
+      <!-- 颜色选择器 - 色彩背景模式显示 -->
+      <n-form-item v-if="previewMode === 'color'" label="选择颜色" path="color">
+        <n-color-picker
+          v-model:value="formValue.color"
+          :show-alpha="true"
+          :modes="['hex', 'rgb', 'hsl']"
+          :swatches="['#1a1a2e', '#16213e', '#0f3460', '#533483', '#e94560', '#ffffff', '#000000']"
+        />
+      </n-form-item>
+      <!-- 颜色预览 - 色彩背景模式显示 -->
+      <div v-if="previewMode === 'color'" class="form-group">
+        <div class="form-label">预览</div>
+        <div class="color-preview" :style="{ backgroundColor: formValue.color }"></div>
+      </div>
       <!-- 选择图片按钮 - 上传模式显示 -->
       <n-form-item v-if="previewMode === 'upload'" label="选择图片">
         <n-button @click="triggerFileInput">{{ selectFileButtonText }}</n-button>
@@ -112,7 +136,11 @@ const save = () => {
         />
       </n-form-item>
       <!-- 上传预览 - 上传模式且有图片时显示 -->
-      <div v-if="previewMode === 'upload' && tempBackgroundUrl" class="form-group">
+      <div
+        v-if="previewMode === 'upload' && tempBackgroundUrl"
+        class="form-group"
+        style="margin-bottom: 16px"
+      >
         <div class="form-label">预览</div>
         <div class="bg-preview">
           <img :src="tempBackgroundUrl" alt="背景预览" />
@@ -123,13 +151,17 @@ const save = () => {
         <n-input v-model:value="formValue.url" placeholder="输入图片链接（如 https://...）" />
       </n-form-item>
       <!-- URL预览 - 在线图片模式且有URL时显示 -->
-      <n-form-item v-if="previewMode === 'url' && formValue.url" path="url">
+      <n-form-item
+        v-if="previewMode === 'url' && formValue.url"
+        path="url"
+        style="margin-bottom: 16px"
+      >
         <div class="bg-preview">
           <img :src="formValue.url" alt="背景预览" />
         </div>
       </n-form-item>
-      <!-- 模糊效果 - 非无背景模式显示 -->
-      <n-form-item v-if="previewMode !== 'none'" label="模糊效果" path="blur">
+      <!-- 模糊效果 - 非色彩背景模式显示 -->
+      <n-form-item v-if="previewMode !== 'color'" label="模糊效果" path="blur">
         <n-select
           v-model:value="formValue.blur"
           :options="[
@@ -151,6 +183,13 @@ const save = () => {
 </template>
 
 <style scoped>
+.color-preview {
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  border: 2px solid var(--bg-white-30);
+}
+
 .bg-preview {
   width: 100%;
   height: 120px;
