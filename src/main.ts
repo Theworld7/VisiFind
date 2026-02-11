@@ -12,10 +12,6 @@ const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
-app.use(naive, {
-  colors: {
-    primary: '#9CA3AF',
-  },
-})
+app.use(naive)
 
 app.mount('#app')

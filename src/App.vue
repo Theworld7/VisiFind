@@ -121,9 +121,12 @@ const loadSettings = async () => {
         backgroundUrl.value = settings.backgroundUrl
       }
       if (settings.backgroundInputMode !== undefined) {
-        backgroundInputMode.value = settings.backgroundInputMode
-        if (backgroundInputMode.value === 'none') {
-          backgroundInputMode.value = 'color'
+        const mode = settings.backgroundInputMode as string
+        backgroundInputMode.value =
+          mode === 'color' || mode === 'upload' || mode === 'url'
+            ? (mode as typeof backgroundInputMode.value)
+            : 'color'
+        if (backgroundInputMode.value === 'color') {
           backgroundColor.value = '#1a1a2e'
         }
       }
@@ -180,7 +183,6 @@ onMounted(async () => {
         primaryColor: '#6B7280',
         primaryColorHover: '#9CA3AF',
         primaryColorPressed: '#4B5563',
-        mergedTdColorHover: 'rgba(107, 114, 128, 0.25)',
       },
     }"
   >

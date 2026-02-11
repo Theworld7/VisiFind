@@ -1,14 +1,25 @@
 <script setup lang="ts">
 import { h } from 'vue'
+import type { DataTableColumn } from 'naive-ui'
 import { NButton, NDataTable, NImage, NTabs, NTabPane } from 'naive-ui'
 
-const columns = [
+interface FoodItem {
+  image: string
+  name: string
+  weight: number
+  carbs: number
+  protein: number
+  fat: number
+  calories: number
+}
+
+const columns: DataTableColumn<FoodItem>[] = [
   {
     title: '图片',
     key: 'image',
     align: 'center',
     width: 80,
-    render: (row: { image: string }) => {
+    render: (row) => {
       return h(NImage, {
         src: row.image,
         objectFit: 'cover',
@@ -56,7 +67,7 @@ const columns = [
   },
 ]
 
-const data: never[] = []
+const data: FoodItem[] = []
 </script>
 
 <template>
@@ -136,6 +147,10 @@ const data: never[] = []
 
 :deep(.n-data-table .n-data-table-thead:hover) {
   background: rgba(107, 114, 128, 0.35) !important;
+}
+
+:deep(.n-data-table .n-data-table-tr:hover .n-data-table-td) {
+  background: rgba(107, 114, 128, 0.25) !important;
 }
 
 :deep(.n-data-table .n-data-table-th:hover) {
