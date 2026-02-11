@@ -1,36 +1,31 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
-import { NDrawer, NDrawerContent, NButton, NDivider } from 'naive-ui'
+import { ref, onMounted, watch, computed } from 'vue'
+import {
+  NDrawer,
+  NDrawerContent,
+  NButton,
+  NColorPicker,
+  NConfigProvider,
+  NGlobalStyle,
+} from 'naive-ui'
 import '@/styles/variables.css'
-import searchIcon from '@/assets/icon-search.svg'
 import settingIcon from '@/assets/setting.svg'
-import BookmarkGrid from '@/components/BookmarkGrid.vue'
-import EngineSelector from '@/components/EngineSelector.vue'
 import BackgroundSettings from '@/components/BackgroundSettings.vue'
-import BookmarkModal from '@/components/BookmarkModal.vue'
-
-interface Bookmark {
-  id?: number
-  name: string
-  url: string
-  customIcon?: string // 自定义图标（base64或URL）
-  group?: string
-  description?: string
-}
 
 const backgroundUrl = ref('')
-const backgroundInputMode = ref<'none' | 'upload' | 'url'>('none')
+const backgroundInputMode = ref<'color' | 'upload' | 'url'>('color')
 const showBackgroundModal = ref(false)
 const backgroundUrlInput = ref('')
 const backgroundBlur = ref(0)
+const backgroundColor = ref('#1a1a2e')
 
 const showSettingsDrawer = ref(false)
 
-// 抽屉设置表单数据
 const formValue = ref({
-  mode: 'none' as 'none' | 'upload' | 'url',
+  mode: 'color' as 'color' | 'upload' | 'url',
   url: '',
   blur: 0,
+  color: '#1a1a2e',
 })
 
 const tempBackgroundUrl = ref('')
@@ -60,39 +55,35 @@ const applySettings = () => {
   backgroundUrl.value = url
   backgroundInputMode.value = formValue.value.mode
   backgroundBlur.value = formValue.value.blur
+  backgroundColor.value = formValue.value.color
   saveBackgroundSettings()
   showSettingsDrawer.value = false
 }
 
-// 监听抽屉打开，同步初始值
 watch(showSettingsDrawer, (val) => {
   if (val) {
     tempBackgroundUrl.value = backgroundUrl.value
     formValue.value.mode = backgroundInputMode.value
     formValue.value.url = backgroundInputMode.value === 'url' ? backgroundUrl.value : ''
     formValue.value.blur = backgroundBlur.value
+    formValue.value.color = backgroundColor.value
   }
 })
 
 const backgroundStyle = computed(() => {
   const style: Record<string, string> = {}
-  if (backgroundUrl.value) {
+  if (backgroundInputMode.value === 'color') {
+    style.backgroundColor = backgroundColor.value
+    style.backgroundImage = 'none'
+  } else if (backgroundUrl.value) {
     style.backgroundImage = `url(${backgroundUrl.value})`
   }
   style['--bg-blur'] = backgroundBlur.value ? `${backgroundBlur.value}px` : '0px'
   return style
 })
 
-const screenWidth = ref(window.innerWidth)
-const searchQuery = ref('')
-const currentEngine = ref('baidu')
-const bookmarks = ref<Bookmark[]>([])
 const db = ref<IDBDatabase | null>(null)
-const isModalOpen = ref(false)
-const modalMode = ref<'add' | 'edit'>('add')
-const editingBookmark = ref<Bookmark | null>(null)
 
-// IndexedDB 相关函数
 const initDB = (): Promise<IDBDatabase> => {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('BookmarkDB', 2)
@@ -116,34 +107,12 @@ const initDB = (): Promise<IDBDatabase> => {
   })
 }
 
-const loadBookmarks = async () => {
-  if (!db.value) return
-
-  const transaction = db.value.transaction('bookmarks', 'readonly')
-  const store = transaction.objectStore('bookmarks')
-  const request = store.getAll()
-
-  request.onsuccess = () => {
-    bookmarks.value = request.result
-  }
-}
-
-// 加载设置
 const loadSettings = async () => {
   if (!db.value) return
 
   const transaction = db.value.transaction('settings', 'readonly')
   const store = transaction.objectStore('settings')
 
-  // 加载搜索引擎
-  const engineRequest = store.get('searchEngine')
-  engineRequest.onsuccess = () => {
-    if (engineRequest.result) {
-      currentEngine.value = engineRequest.result.value
-    }
-  }
-
-  // 加载背景设置
   const bgRequest = store.get('backgroundSettings')
   bgRequest.onsuccess = () => {
     if (bgRequest.result) {
@@ -153,24 +122,21 @@ const loadSettings = async () => {
       }
       if (settings.backgroundInputMode !== undefined) {
         backgroundInputMode.value = settings.backgroundInputMode
+        if (backgroundInputMode.value === 'none') {
+          backgroundInputMode.value = 'color'
+          backgroundColor.value = '#1a1a2e'
+        }
       }
       if (settings.backgroundBlur !== undefined) {
         backgroundBlur.value = settings.backgroundBlur
+      }
+      if (settings.backgroundColor !== undefined) {
+        backgroundColor.value = settings.backgroundColor
       }
     }
   }
 }
 
-// 保存设置
-const saveSettings = (key: string, value: string) => {
-  if (!db.value) return
-
-  const transaction = db.value.transaction('settings', 'readwrite')
-  const store = transaction.objectStore('settings')
-  store.put({ key, value })
-}
-
-// 保存背景设置
 const saveBackgroundSettings = () => {
   if (!db.value) return
 
@@ -182,351 +148,162 @@ const saveBackgroundSettings = () => {
       backgroundUrl: backgroundUrl.value,
       backgroundInputMode: backgroundInputMode.value,
       backgroundBlur: backgroundBlur.value,
+      backgroundColor: backgroundColor.value,
     },
   })
 }
 
-const addBookmark = (bookmark: Bookmark): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    if (!db.value) {
-      reject(new Error('Database not initialized'))
-      return
-    }
-
-    const transaction = db.value.transaction('bookmarks', 'readwrite')
-    const store = transaction.objectStore('bookmarks')
-    const request = store.add(bookmark)
-
-    request.onsuccess = () => {
-      const id = request.result as number
-      const newBookmark = { ...bookmark, id }
-      bookmarks.value = [...bookmarks.value, newBookmark]
-      resolve(id)
-    }
-    request.onerror = () => reject(request.error)
-  })
-}
-
-const updateBookmark = (id: number, bookmark: Bookmark) => {
-  if (!db.value) return
-
-  const transaction = db.value.transaction('bookmarks', 'readwrite')
-  const store = transaction.objectStore('bookmarks')
-  store.put({ ...bookmark, id })
-
-  transaction.oncomplete = () => {
-    bookmarks.value = bookmarks.value.map((b) => (b.id === id ? { ...bookmark, id } : b))
-  }
-}
-
-const deleteBookmark = (id: number) => {
-  if (!db.value) return
-
-  const transaction = db.value.transaction('bookmarks', 'readwrite')
-  const store = transaction.objectStore('bookmarks')
-  store.delete(id)
-
-  transaction.oncomplete = () => {
-    bookmarks.value = bookmarks.value.filter((b) => b.id !== id)
-  }
-}
-
-const updateScreenWidth = () => {
-  screenWidth.value = window.innerWidth
-}
-
-const search = () => {
-  if (!searchQuery.value.trim()) return
-  const query = encodeURIComponent(searchQuery.value)
-  let url = ''
-  switch (currentEngine.value) {
-    case 'baidu':
-      url = `https://www.baidu.com/s?wd=${query}`
-      break
-    case 'bing':
-      url = `https://www.bing.com/search?q=${query}`
-      break
-    case 'google':
-      url = `https://www.google.com/search?q=${query}`
-      break
-    case 'sogou':
-      url = `https://www.sogou.com/web?query=${query}`
-      break
-  }
-  window.open(url, '_blank')
-}
-
-const openBookmark = (url: string) => {
-  window.open(url, '_blank')
-}
-
-// 处理书签排序
-const handleReorder = (reorderedBookmarks: Bookmark[]) => {
-  bookmarks.value = reorderedBookmarks
-}
-
-const openAddModal = () => {
-  modalMode.value = 'add'
-  editingBookmark.value = null
-  isModalOpen.value = true
-}
-
-const openEditModal = (bookmark: Bookmark) => {
-  modalMode.value = 'edit'
-  editingBookmark.value = bookmark
-  isModalOpen.value = true
-}
-
-const handleBookmarkSave = (data: Partial<Bookmark>) => {
-  if (modalMode.value === 'add') {
-    addBookmark(data as Bookmark)
-  } else if (data.id) {
-    updateBookmark(data.id, data as Bookmark)
-  }
-}
-
-// 处理背景设置保存
 const handleBackgroundSave = (data: {
   backgroundUrl: string
   backgroundInputMode: string
   backgroundBlur: number
+  backgroundColor: string
 }) => {
-  // 更新数据
   backgroundUrl.value = data.backgroundUrl
   backgroundInputMode.value = data.backgroundInputMode as typeof backgroundInputMode.value
   backgroundBlur.value = data.backgroundBlur
-  // 关闭弹窗
+  backgroundColor.value = data.backgroundColor
   showBackgroundModal.value = false
-  // 保存设置
   saveBackgroundSettings()
-}
-
-// 导出数据
-const exportData = () => {
-  const data = {
-    version: 1,
-    backgroundUrl: backgroundUrl.value,
-    backgroundInputMode: backgroundInputMode.value,
-    backgroundBlur: backgroundBlur.value,
-    bookmarks: bookmarks.value,
-  }
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `bookmarks-backup-${new Date().toISOString().split('T')[0]}.json`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
-// 导入数据
-const importFileInput = ref<HTMLInputElement | null>(null)
-
-const triggerImport = () => {
-  importFileInput.value?.click()
-}
-
-const importData = (event: Event) => {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-
-  const reader = new FileReader()
-  reader.onload = async (e) => {
-    try {
-      const data = JSON.parse(e.target?.result as string)
-      if (data.bookmarks && Array.isArray(data.bookmarks)) {
-        // 获取现有名称用于去重
-        const existingNames = new Set(bookmarks.value.map((b) => b.name.toLowerCase()))
-
-        // 导入新数据，忽略重复名称
-        let importCount = 0
-        for (const bookmark of data.bookmarks) {
-          if (!existingNames.has(bookmark.name.toLowerCase())) {
-            // 移除ID字段，让数据库自动生成新ID
-            const { id, ...bookmarkWithoutId } = bookmark
-            await addBookmark(bookmarkWithoutId)
-            existingNames.add(bookmark.name.toLowerCase())
-            importCount++
-          }
-        }
-
-        // 导入背景设置
-        if (data.backgroundUrl !== undefined) {
-          backgroundUrl.value = data.backgroundUrl || ''
-        }
-        if (data.backgroundInputMode !== undefined) {
-          backgroundInputMode.value = data.backgroundInputMode
-        }
-        if (data.backgroundBlur !== undefined) {
-          backgroundBlur.value = data.backgroundBlur
-        }
-
-        alert(`导入成功！共导入 ${importCount} 个书签`)
-      }
-    } catch (err) {
-      alert('导入失败，请检查文件格式是否正确')
-      console.error(err)
-    }
-    // 清空 input 以便重复导入同一文件
-    input.value = ''
-  }
-  reader.readAsText(file)
 }
 
 onMounted(async () => {
   await initDB()
   await loadSettings()
-  await loadBookmarks()
-  updateScreenWidth()
-  window.addEventListener('resize', updateScreenWidth)
-})
-
-// 监听搜索引擎变化并保存
-watch(currentEngine, (newEngine: string) => {
-  saveSettings('searchEngine', newEngine)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', updateScreenWidth)
 })
 </script>
 
 <template>
-  <div class="fullscreen" :class="{ 'has-background': backgroundUrl }" :style="backgroundStyle">
-    <!-- 右上角操作按钮 -->
-    <div class="action-buttons">
-      <!-- 设置按钮 -->
-      <button class="action-btn" @click="showSettingsDrawer = true" title="设置">
-        <img :src="settingIcon" alt="设置" />
-      </button>
-    </div>
+  <n-config-provider
+    :theme-overrides="{
+      common: {
+        primaryColor: '#6B7280',
+        primaryColorHover: '#9CA3AF',
+        primaryColorPressed: '#4B5563',
+        mergedTdColorHover: 'rgba(107, 114, 128, 0.25)',
+      },
+    }"
+  >
+    <n-global-style />
+    <div
+      class="fullscreen"
+      :class="{ 'has-background': backgroundInputMode !== 'color' && backgroundUrl }"
+      :style="backgroundStyle"
+    >
+      <nav class="top-nav">
+        <router-link to="/search" class="nav-item">搜索</router-link>
+        <router-link to="/health" class="nav-item">健康记录</router-link>
+      </nav>
 
-    <div class="search-container">
-      <div class="search-bar">
-        <EngineSelector v-model="currentEngine" />
-
-        <div class="search-box">
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="输入搜索内容..."
-            @keyup.enter="search"
-          />
-          <button class="search-btn" @click="search">
-            <img :src="searchIcon" alt="搜索" />
-          </button>
-        </div>
+      <div class="action-buttons">
+        <button class="action-btn" @click="showSettingsDrawer = true" title="设置">
+          <img :src="settingIcon" alt="设置" />
+        </button>
       </div>
 
-      <BookmarkGrid
-        :bookmarks="bookmarks"
-        @add="openAddModal"
-        @edit="openEditModal"
-        @delete="deleteBookmark"
-        @open="openBookmark"
-        @reorder="handleReorder"
+      <router-view v-slot="{ Component }">
+        <transition name="fade" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </router-view>
+
+      <BackgroundSettings
+        v-model:show="showBackgroundModal"
+        v-model:background-url="backgroundUrl"
+        v-model:background-input-mode="backgroundInputMode"
+        v-model:background-url-input="backgroundUrlInput"
+        v-model:background-blur="backgroundBlur"
+        v-model:background-color="backgroundColor"
+        @save="handleBackgroundSave"
       />
+
+      <NDrawer v-model:show="showSettingsDrawer" :width="400" placement="right">
+        <NDrawerContent title="设置" closable>
+          <n-form ref="formRef" :model="formValue">
+            <n-form-item label="背景模式" path="mode">
+              <div class="mode-switch">
+                <n-radio-group v-model:value="formValue.mode" name="backgroundType">
+                  <n-radio-button value="color">色彩背景</n-radio-button>
+                  <n-radio-button value="url">在线图片</n-radio-button>
+                  <n-radio-button value="upload">上传图片</n-radio-button>
+                </n-radio-group>
+              </div>
+            </n-form-item>
+            <n-form-item v-if="formValue.mode === 'color'" label="选择颜色" path="color">
+              <n-color-picker
+                v-model:value="formValue.color"
+                :show-alpha="true"
+                :modes="['hex', 'rgb', 'hsl']"
+                :swatches="[
+                  '#1a1a2e',
+                  '#16213e',
+                  '#0f3460',
+                  '#533483',
+                  '#e94560',
+                  '#ffffff',
+                  '#000000',
+                ]"
+              />
+            </n-form-item>
+            <div v-if="formValue.mode === 'color'" class="form-group">
+              <div class="form-label">预览</div>
+              <div class="color-preview" :style="{ backgroundColor: formValue.color }"></div>
+            </div>
+            <n-form-item v-if="formValue.mode === 'upload'" label="选择图片">
+              <n-button @click="triggerFileInput">{{ selectFileButtonText }}</n-button>
+              <input
+                ref="backgroundFileInput"
+                type="file"
+                accept="image/*"
+                style="display: none"
+                @change="handleBackgroundUpload"
+              />
+            </n-form-item>
+            <div
+              v-if="formValue.mode === 'upload' && tempBackgroundUrl"
+              class="form-group"
+              style="margin-bottom: 16px"
+            >
+              <div class="form-label">预览</div>
+              <div class="bg-preview">
+                <img :src="tempBackgroundUrl" alt="背景预览" />
+              </div>
+            </div>
+            <n-form-item v-if="formValue.mode === 'url'" label="图片URL" path="url">
+              <n-input v-model:value="formValue.url" placeholder="输入图片链接（如 https://...）" />
+            </n-form-item>
+            <n-form-item
+              v-if="formValue.mode === 'url' && formValue.url"
+              path="url"
+              style="margin-bottom: 16px"
+            >
+              <div class="bg-preview">
+                <img :src="formValue.url" alt="背景预览" />
+              </div>
+            </n-form-item>
+            <n-form-item v-if="formValue.mode !== 'color'" label="模糊效果" path="blur">
+              <n-select
+                v-model:value="formValue.blur"
+                :options="[
+                  { label: '无模糊', value: 0 },
+                  { label: '轻微模糊', value: 5 },
+                  { label: '中等模糊', value: 10 },
+                  { label: '强模糊', value: 20 },
+                ]"
+              />
+            </n-form-item>
+          </n-form>
+
+          <template #footer>
+            <n-space reverse>
+              <n-button type="primary" @click="applySettings">应用</n-button>
+              <n-button @click="showSettingsDrawer = false">关闭</n-button>
+            </n-space>
+          </template>
+        </NDrawerContent>
+      </NDrawer>
     </div>
-
-    <!-- 书签表单模态框 -->
-    <BookmarkModal
-      v-model:show="isModalOpen"
-      :mode="modalMode"
-      :bookmark="editingBookmark"
-      @save="handleBookmarkSave"
-    />
-
-    <!-- 背景设置模态框 -->
-    <BackgroundSettings
-      v-model:show="showBackgroundModal"
-      v-model:background-url="backgroundUrl"
-      v-model:background-input-mode="backgroundInputMode"
-      v-model:background-url-input="backgroundUrlInput"
-      v-model:background-blur="backgroundBlur"
-      @save="handleBackgroundSave"
-    />
-
-    <!-- 设置抽屉 -->
-    <NDrawer v-model:show="showSettingsDrawer" :width="400" placement="right">
-      <NDrawerContent title="设置" closable>
-        <n-form ref="formRef" :model="formValue">
-          <!-- 背景模式选择 -->
-          <n-form-item label="背景模式" path="mode">
-            <div class="mode-switch">
-              <n-radio-group v-model:value="formValue.mode" name="backgroundType">
-                <n-radio-button value="none">无背景</n-radio-button>
-                <n-radio-button value="url">在线图片</n-radio-button>
-                <n-radio-button value="upload">上传图片</n-radio-button>
-              </n-radio-group>
-            </div>
-          </n-form-item>
-          <!-- 选择图片按钮 - 上传模式显示 -->
-          <n-form-item v-if="formValue.mode === 'upload'" label="选择图片">
-            <n-button @click="triggerFileInput">{{ selectFileButtonText }}</n-button>
-            <input
-              ref="backgroundFileInput"
-              type="file"
-              accept="image/*"
-              style="display: none"
-              @change="handleBackgroundUpload"
-            />
-          </n-form-item>
-          <!-- 上传预览 - 上传模式且有图片时显示 -->
-          <div v-if="formValue.mode === 'upload' && tempBackgroundUrl" class="form-group">
-            <div class="form-label">预览</div>
-            <div class="bg-preview">
-              <img :src="tempBackgroundUrl" alt="背景预览" />
-            </div>
-          </div>
-          <!-- URL输入 - 在线图片模式显示 -->
-          <n-form-item v-if="formValue.mode === 'url'" label="图片URL" path="url">
-            <n-input v-model:value="formValue.url" placeholder="输入图片链接（如 https://...）" />
-          </n-form-item>
-          <!-- URL预览 - 在线图片模式且有URL时显示 -->
-          <n-form-item v-if="formValue.mode === 'url' && formValue.url" path="url">
-            <div class="bg-preview">
-              <img :src="formValue.url" alt="背景预览" />
-            </div>
-          </n-form-item>
-          <!-- 模糊效果 - 非无背景模式显示 -->
-          <n-form-item v-if="formValue.mode !== 'none'" label="模糊效果" path="blur">
-            <n-select
-              v-model:value="formValue.blur"
-              :options="[
-                { label: '无模糊', value: 0 },
-                { label: '轻微模糊', value: 5 },
-                { label: '中等模糊', value: 10 },
-                { label: '强模糊', value: 20 },
-              ]"
-            />
-          </n-form-item>
-        </n-form>
-
-        <n-divider />
-
-        <n-space vertical>
-          <n-button block @click="triggerImport"> 导入备份 </n-button>
-          <n-button block @click="exportData"> 导出备份 </n-button>
-        </n-space>
-
-        <input
-          ref="importFileInput"
-          type="file"
-          accept=".json"
-          style="display: none"
-          @change="importData"
-        />
-
-        <template #footer>
-          <n-space reverse>
-            <n-button type="primary" @click="applySettings">应用</n-button>
-            <n-button @click="showSettingsDrawer = false">关闭</n-button>
-          </n-space>
-        </template>
-      </NDrawerContent>
-    </NDrawer>
-  </div>
+  </n-config-provider>
 </template>
 
 <style>
@@ -557,19 +334,52 @@ onUnmounted(() => {
   background-repeat: no-repeat;
 }
 
+.top-nav {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  display: flex;
+  gap: 8px;
+  z-index: 100;
+  background: var(--bg-gray-15);
+  backdrop-filter: blur(4px);
+  padding: 6px;
+  border-radius: 20px;
+}
+
+.nav-item {
+  color: var(--text-white);
+  text-decoration: none;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 16px;
+  background: transparent;
+  transition: all 0.2s;
+}
+
+.nav-item:hover {
+  background: var(--bg-white-30);
+}
+
+.nav-item.router-link-active {
+  background: #6b7280;
+  color: #f3f4f6;
+}
+
 .action-buttons {
   position: absolute;
   top: 24px;
   right: 24px;
   display: flex;
   gap: 8px;
+  z-index: 100;
 }
 
 .action-btn {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--bg-white-20);
+  background: var(--bg-gray-15);
   border: none;
   cursor: pointer;
   display: flex;
@@ -580,77 +390,12 @@ onUnmounted(() => {
 }
 
 .action-btn:hover {
-  background: var(--bg-white-30);
+  background: var(--bg-gray-25);
 }
 
 .action-btn img {
   width: 18px;
   height: 18px;
-  filter: invert(1);
-}
-
-.search-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 48px;
-  width: 600px;
-  margin: auto;
-  position: relative;
-  z-index: 1;
-}
-
-.search-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-}
-
-.search-box {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  height: 48px;
-  background: var(--bg-white-85);
-  border-radius: 24px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px var(--bg-overlay-lighter);
-}
-
-.search-box input {
-  flex: 1;
-  height: 100%;
-  padding: 0 20px;
-  border: none;
-  outline: none;
-  font-size: 16px;
-}
-
-.search-btn {
-  height: 100%;
-  padding: 0 16px;
-  background: var(--bg-white-85);
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.search-btn img {
-  width: 20px;
-  height: 20px;
-}
-
-.search-btn:hover,
-.search-btn:active {
-  background: var(--bg-overlay-light);
-}
-
-.search-btn:hover img,
-.search-btn:active img {
   filter: invert(1);
 }
 
@@ -667,38 +412,14 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-/* 手机适配 */
-@media (max-width: 768px) {
-  .fullscreen {
-    padding: 16px;
-  }
-
-  .action-buttons {
-    position: relative;
-    top: 0;
-    right: 0;
-    margin-bottom: 16px;
-  }
-
-  .search-container {
-    width: 100%;
-    max-width: 360px;
-    align-items: center;
-    gap: 40px;
-  }
-
-  .search-bar {
-    gap: 6px;
-  }
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
 }
 
-@media (max-width: 392px) {
-  .search-container {
-    width: 100% !important;
-    max-width: 100%;
-    padding: 0 16px;
-    box-sizing: border-box;
-  }
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 .bg-preview {
@@ -713,5 +434,43 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.color-preview {
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  border: 2px solid var(--bg-white-30);
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  color: var(--text-white);
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 768px) {
+  .fullscreen {
+    padding: 16px;
+  }
+
+  .action-buttons {
+    position: relative;
+    top: 0;
+    right: 0;
+    margin-bottom: 16px;
+  }
+
+  .top-nav {
+    position: relative;
+    top: 0;
+    left: 0;
+    margin-bottom: 16px;
+    justify-content: center;
+  }
 }
 </style>

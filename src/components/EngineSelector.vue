@@ -57,7 +57,7 @@ const selectEngine = (engine: string) => {
 
 .engine-tag {
   padding: 8px;
-  background: var(--bg-white-20);
+  background: var(--bg-gray-15);
   backdrop-filter: blur(4px);
   border-radius: 50%;
   font-size: 14px;
@@ -99,8 +99,8 @@ const selectEngine = (engine: string) => {
   border-radius: 20px;
   padding: 8px 16px;
   justify-content: flex-start;
-  background: var(--bg-white-90);
-  color: var(--text-primary);
+  background: #9ca3af;
+  color: #f3f4f6;
   gap: 6px;
   transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }

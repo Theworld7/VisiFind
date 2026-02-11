@@ -1,3 +1,10 @@
 * {
-    box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+:root {
+  --primary-color: #9ca3af;
+  --primary-color-hover: #b0b8c5;
+  --primary-color-pressed: #7e8a99;
+  --primary-color-supplimentary: #9ca3af;
 }

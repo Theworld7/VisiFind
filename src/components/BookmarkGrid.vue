@@ -16,6 +16,8 @@ interface Bookmark {
 
 const props = defineProps<{
   bookmarks: Bookmark[]
+  groups?: string[]
+  currentGroup?: string
 }>()
 
 const emit = defineEmits<{
@@ -24,13 +26,29 @@ const emit = defineEmits<{
   (e: 'delete', id: number): void
   (e: 'open', url: string): void
   (e: 'reorder', bookmarks: Bookmark[]): void
+  (e: 'switch-group', group: string): void
 }>()
+
+const groups = computed(() => {
+  if (props.groups && props.groups.length > 0) {
+    return props.groups
+  }
+  const groupSet = new Set<string>()
+  groupSet.add('默认')
+  props.bookmarks.forEach((bookmark) => {
+    if (bookmark.group && bookmark.group.trim()) {
+      groupSet.add(bookmark.group)
+    }
+  })
+  return Array.from(groupSet)
+})
+
+const currentGroup = ref(props.currentGroup || '默认')
 
 const contextMenuVisible = ref(false)
 const contextMenuBookmark = ref<Bookmark | null>(null)
 const contextMenuX = ref(0)
 const contextMenuY = ref(0)
-const currentGroup = ref('默认')
 const containerRef = ref<HTMLElement | null>(null)
 
 const menuOptions = [
@@ -156,29 +174,17 @@ const handleDrop = (event: DragEvent, targetIndex: number) => {
   handleDragEnd()
 }
 
-// 从书签中提取所有分组
-const groups = computed(() => {
-  const groupSet = new Set<string>()
-  groupSet.add('默认')
-  props.bookmarks.forEach((bookmark) => {
-    if (bookmark.group && bookmark.group.trim()) {
-      groupSet.add(bookmark.group)
-    }
-  })
-  return Array.from(groupSet)
-})
+const switchGroup = (group: string) => {
+  currentGroup.value = group
+  emit('switch-group', group)
+}
 
-// 根据当前分组过滤书签
 const filteredBookmarks = computed(() => {
-  if (currentGroup.value === '默认') {
+  if (currentGroup.value === '默认' || currentGroup.value === '全部') {
     return props.bookmarks.filter((bookmark) => !bookmark.group || !bookmark.group.trim())
   }
   return props.bookmarks.filter((bookmark) => bookmark.group === currentGroup.value)
 })
-
-const switchGroup = (group: string) => {
-  currentGroup.value = group
-}
 
 const openAddModal = () => {
   emit('add')
@@ -257,30 +263,51 @@ onUnmounted(() => {
           @dragend="handleDragEnd"
           @drop="handleDrop($event, index)"
         >
-          <div
-            class="bookmark-icon-wrapper"
-            @click="openBookmark(bookmark.url)"
-            @contextmenu="showContextMenu($event, bookmark)"
-          >
-            <!-- 优先显示自定义图标 -->
-            <img
-              v-if="bookmark.customIcon"
-              :src="bookmark.customIcon"
-              class="bookmark-favicon"
-              alt=""
-            />
-            <!-- 默认显示首字符 -->
-            <div v-else class="bookmark-icon">
-              {{ bookmark.name.charAt(0) }}
-            </div>
-          </div>
           <n-tooltip v-if="bookmark.description" trigger="hover">
             <template #trigger>
-              <span class="bookmark-name">{{ bookmark.name }}</span>
+              <div class="bookmark-content">
+                <div
+                  class="bookmark-icon-wrapper"
+                  @click="openBookmark(bookmark.url)"
+                  @contextmenu="showContextMenu($event, bookmark)"
+                >
+                  <!-- 优先显示自定义图标 -->
+                  <img
+                    v-if="bookmark.customIcon"
+                    :src="bookmark.customIcon"
+                    class="bookmark-favicon"
+                    alt=""
+                  />
+                  <!-- 默认显示首字符 -->
+                  <div v-else class="bookmark-icon">
+                    {{ bookmark.name.charAt(0) }}
+                  </div>
+                </div>
+                <span class="bookmark-name">{{ bookmark.name }}</span>
+              </div>
             </template>
             {{ bookmark.description }}
           </n-tooltip>
-          <span v-else class="bookmark-name">{{ bookmark.name }}</span>
+          <div v-else class="bookmark-content">
+            <div
+              class="bookmark-icon-wrapper"
+              @click="openBookmark(bookmark.url)"
+              @contextmenu="showContextMenu($event, bookmark)"
+            >
+              <!-- 优先显示自定义图标 -->
+              <img
+                v-if="bookmark.customIcon"
+                :src="bookmark.customIcon"
+                class="bookmark-favicon"
+                alt=""
+              />
+              <!-- 默认显示首字符 -->
+              <div v-else class="bookmark-icon">
+                {{ bookmark.name.charAt(0) }}
+              </div>
+            </div>
+            <span class="bookmark-name">{{ bookmark.name }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -295,7 +322,9 @@ onUnmounted(() => {
       :show="contextMenuVisible"
       @select="handleContextMenuSelect"
       @clickoutside="closeContextMenu"
-    />
+    >
+      <span></span>
+    </NDropdown>
 
     <!-- 分组切换器 -->
     <div class="group-tabs">
@@ -376,6 +405,16 @@ onUnmounted(() => {
   background: var(--bg-white-20);
 }
 
+.bookmark-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
 .bookmark-icon-wrapper {
   position: relative;
   width: 44px;
@@ -385,10 +424,11 @@ onUnmounted(() => {
 }
 
 .add-btn {
-  background: var(--bg-white-20);
+  background: var(--bg-gray-15);
   display: flex;
   align-items: center;
   justify-content: center;
+  height: 44px;
 }
 
 .add-btn .action-icon {
@@ -444,7 +484,7 @@ onUnmounted(() => {
 .group-tabs-inner {
   display: flex;
   gap: 8px;
-  background: var(--bg-white-20);
+  background: var(--bg-gray-15);
   backdrop-filter: blur(4px);
   padding: 6px;
   border-radius: 20px;
@@ -470,8 +510,8 @@ onUnmounted(() => {
 }
 
 .group-tab.active {
-  background: var(--bg-white-90);
-  color: var(--text-primary);
+  background: #6b7280;
+  color: #f3f4f6;
 }
 
 /* 手机适配 */
