@@ -1,26 +1,31 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { NModal, NSpace } from 'naive-ui'
 import '@/styles/variables.css'
 import searchIcon from '@/assets/icon-search.svg'
 import BookmarkGrid from '@/components/BookmarkGrid.vue'
-import EngineSelector from '@/components/EngineSelector.vue'
 import BookmarkModal from '@/components/BookmarkModal.vue'
+import EngineSelector from '@/components/EngineSelector.vue'
+import { useBookmarks, type Bookmark } from '@/composables/useBookmarks'
+import { useSearch } from '@/composables/useSearch'
+import { useAppSettings } from '@/composables/useAppSettings'
+import { useAppStore } from '@/stores/app'
 
-interface Bookmark {
-  id?: number
-  name: string
-  url: string
-  customIcon?: string
-  group?: string
-  description?: string
-}
+const {
+  db,
+  bookmarks,
+  initDB,
+  loadBookmarks,
+  addBookmark,
+  updateBookmark,
+  deleteBookmark,
+  reorderBookmarks,
+  exportData,
+  importData,
+} = useBookmarks()
+const { searchQuery, currentEngine, search, openBookmark } = useSearch()
+const { initDB: initSettingsDB, loadSettings, saveSettings } = useAppSettings()
 
-const db = ref<IDBDatabase | null>(null)
-
-const searchQuery = ref('')
-const currentEngine = ref('baidu')
-const bookmarks = ref<Bookmark[]>([])
 const isModalOpen = ref(false)
 const modalMode = ref<'add' | 'edit'>('add')
 const editingBookmark = ref<Bookmark | null>(null)
@@ -38,148 +43,6 @@ const filteredBookmarks = computed(() => {
   }
   return bookmarks.value.filter((b) => b.group === currentGroup.value)
 })
-
-const initDB = (): Promise<IDBDatabase> => {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open('BookmarkDB', 2)
-
-    request.onerror = () => reject(request.error)
-
-    request.onsuccess = () => {
-      db.value = request.result
-      resolve(request.result)
-    }
-
-    request.onupgradeneeded = (event) => {
-      const database = (event.target as IDBOpenDBRequest).result
-      if (!database.objectStoreNames.contains('bookmarks')) {
-        database.createObjectStore('bookmarks', { keyPath: 'id', autoIncrement: true })
-      }
-      if (!database.objectStoreNames.contains('settings')) {
-        database.createObjectStore('settings', { keyPath: 'key' })
-      }
-    }
-  })
-}
-
-const loadBookmarks = async () => {
-  if (!db.value) return
-
-  const transaction = db.value.transaction('bookmarks', 'readonly')
-  const store = transaction.objectStore('bookmarks')
-  const request = store.getAll()
-
-  request.onsuccess = () => {
-    bookmarks.value = request.result
-  }
-}
-
-const saveSettings = (key: string, value: string) => {
-  if (!db.value) return
-
-  const transaction = db.value.transaction('settings', 'readwrite')
-  const store = transaction.objectStore('settings')
-  store.put({ key, value })
-}
-
-const loadSettings = async () => {
-  if (!db.value) return
-
-  const transaction = db.value.transaction('settings', 'readonly')
-  const store = transaction.objectStore('settings')
-
-  const engineRequest = store.get('searchEngine')
-  engineRequest.onsuccess = () => {
-    if (engineRequest.result) {
-      currentEngine.value = engineRequest.result.value
-    }
-  }
-}
-
-const addBookmark = (bookmark: Bookmark): Promise<number> => {
-  return new Promise((resolve, reject) => {
-    if (!db.value) {
-      reject(new Error('Database not initialized'))
-      return
-    }
-
-    const transaction = db.value.transaction('bookmarks', 'readwrite')
-    const store = transaction.objectStore('bookmarks')
-    const request = store.add(bookmark)
-
-    request.onsuccess = () => {
-      const id = request.result as number
-      const newBookmark = { ...bookmark, id }
-      bookmarks.value = [...bookmarks.value, newBookmark]
-      resolve(id)
-    }
-    request.onerror = () => reject(request.error)
-  })
-}
-
-const updateBookmark = (id: number, bookmark: Bookmark) => {
-  if (!db.value) return
-
-  const transaction = db.value.transaction('bookmarks', 'readwrite')
-  const store = transaction.objectStore('bookmarks')
-  store.put({ ...bookmark, id })
-
-  transaction.oncomplete = () => {
-    bookmarks.value = bookmarks.value.map((b) => (b.id === id ? { ...bookmark, id } : b))
-  }
-}
-
-const deleteBookmark = (id: number) => {
-  if (!db.value) return
-
-  const transaction = db.value.transaction('bookmarks', 'readwrite')
-  const store = transaction.objectStore('bookmarks')
-  store.delete(id)
-
-  transaction.oncomplete = () => {
-    bookmarks.value = bookmarks.value.filter((b) => b.id !== id)
-  }
-}
-
-const search = () => {
-  if (!searchQuery.value.trim()) return
-  const query = encodeURIComponent(searchQuery.value)
-  let url = ''
-  switch (currentEngine.value) {
-    case 'baidu':
-      url = `https://www.baidu.com/s?wd=${query}`
-      break
-    case 'bing':
-      url = `https://www.bing.com/search?q=${query}`
-      break
-    case 'google':
-      url = `https://www.google.com/search?q=${query}`
-      break
-    case 'sogou':
-      url = `https://www.sogou.com/web?query=${query}`
-      break
-  }
-  window.open(url, '_blank')
-}
-
-const openBookmark = (url: string) => {
-  window.open(url, '_blank')
-}
-
-const handleReorder = (reorderedBookmarks: Bookmark[]) => {
-  if (!db.value) return
-
-  const transaction = db.value.transaction('bookmarks', 'readwrite')
-  const store = transaction.objectStore('bookmarks')
-
-  reorderedBookmarks.forEach((bookmark) => {
-    if (bookmark.id !== undefined) {
-      store.put(bookmark)
-    }
-  })
-
-  bookmarks.value = reorderedBookmarks
-}
 
 const openAddModal = () => {
   modalMode.value = 'add'
@@ -205,14 +68,56 @@ const switchGroup = (group: string) => {
   currentGroup.value = group
 }
 
+const handleReorder = (reorderedBookmarks: Bookmark[]) => {
+  reorderBookmarks(reorderedBookmarks)
+}
+
 watch(currentEngine, (newEngine: string) => {
   saveSettings('searchEngine', newEngine)
 })
 
+const importFileInput = ref<HTMLInputElement | null>(null)
+
+const triggerImport = () => {
+  importFileInput.value?.click()
+}
+
+const handleImportData = (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    try {
+      const data = JSON.parse(e.target?.result as string)
+      const importCount = await importData(data)
+      if (importCount !== undefined && importCount > 0) {
+        alert(`导入成功！共导入 ${importCount} 个书签`)
+      } else if (importCount === 0) {
+        alert('没有新书签需要导入')
+      }
+    } catch (err) {
+      alert('导入失败，请检查文件格式是否正确')
+      console.error(err)
+    }
+    input.value = ''
+  }
+  reader.readAsText(file)
+}
+
+const doExportData = () => {
+  exportData()
+}
+
 onMounted(async () => {
   await initDB()
+  initSettingsDB(db.value!)
   await loadSettings()
   await loadBookmarks()
+
+  const appStore = useAppStore()
+  appStore.registerImportExport(triggerImport, doExportData, handleImportData)
 })
 </script>
 
@@ -254,17 +159,26 @@ onMounted(async () => {
       :bookmark="editingBookmark"
       @save="handleBookmarkSave"
     />
+
+    <input
+      ref="importFileInput"
+      type="file"
+      accept=".json"
+      style="display: none"
+      @change="handleImportData"
+    />
   </div>
 </template>
 
 <style scoped>
 .search-page {
-  width: 100%;
-  height: 100%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  height: 100%;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .search-container {
@@ -272,16 +186,13 @@ onMounted(async () => {
   flex-direction: column;
   align-items: center;
   gap: 48px;
-  width: 600px;
-  position: relative;
-  z-index: 1;
+  width: 100%;
 }
 
 .search-bar {
+  width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  width: 100%;
 }
 
 .search-box {
@@ -289,7 +200,9 @@ onMounted(async () => {
   align-items: center;
   width: 100%;
   height: 48px;
-  background: var(--bg-gray-15);
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-radius: 24px;
   overflow: hidden;
   box-shadow: 0 4px 20px var(--bg-overlay-lighter);
@@ -313,7 +226,7 @@ onMounted(async () => {
 .search-btn {
   height: 100%;
   padding: 0 16px;
-  background: var(--bg-gray-15);
+  background: transparent;
   border: none;
   cursor: pointer;
   display: flex;
@@ -328,35 +241,13 @@ onMounted(async () => {
   filter: invert(1);
 }
 
-.search-btn:hover,
-.search-btn:active {
-  background: var(--bg-overlay-light);
-}
-
-.search-btn:hover img,
-.search-btn:active img {
-  filter: invert(1);
+.search-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 @media (max-width: 768px) {
   .search-container {
-    width: 100%;
-    max-width: 360px;
-    align-items: center;
-    gap: 40px;
-  }
-
-  .search-bar {
-    gap: 6px;
-  }
-}
-
-@media (max-width: 392px) {
-  .search-container {
-    width: 100% !important;
-    max-width: 100%;
-    padding: 0 16px;
-    box-sizing: border-box;
+    gap: 32px;
   }
 }
 </style>

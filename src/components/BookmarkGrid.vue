@@ -328,11 +328,11 @@ onUnmounted(() => {
 
     <!-- 分组切换器 -->
     <div class="group-tabs">
-      <div class="group-tabs-inner">
+      <div class="group-tabs-inner glass-white menu-container">
         <button
           v-for="group in groups"
           :key="group"
-          class="group-tab"
+          class="group-tab menu-item"
           :class="{ active: currentGroup === group }"
           @click="switchGroup(group)"
         >
@@ -364,7 +364,7 @@ onUnmounted(() => {
 .bookmark-grid {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
-  grid-auto-rows: 72px;
+  grid-auto-rows: 80px;
   gap: 12px;
   width: 100%;
   height: 100%;
@@ -389,6 +389,7 @@ onUnmounted(() => {
     background 0.2s;
   padding: 4px;
   border-radius: 12px;
+  height: 80px;
 }
 
 .bookmark-item:hover {
@@ -428,11 +429,15 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 44px;
   height: 44px;
+  line-height: 0;
+  overflow: hidden;
 }
 
 .add-btn .action-icon {
   filter: invert(1);
+  display: block;
 }
 
 .action-icon {
@@ -484,34 +489,13 @@ onUnmounted(() => {
 .group-tabs-inner {
   display: flex;
   gap: 8px;
-  background: var(--bg-gray-15);
-  backdrop-filter: blur(4px);
-  padding: 6px;
-  border-radius: 20px;
   flex-wrap: wrap;
   justify-content: center;
   max-width: 80%;
 }
 
 .group-tab {
-  padding: 8px 16px;
-  border-radius: 16px;
-  border: none;
-  background: transparent;
-  color: var(--text-white);
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
   white-space: nowrap;
-}
-
-.group-tab:hover {
-  background: var(--bg-white-30);
-}
-
-.group-tab.active {
-  background: #6b7280;
-  color: #f3f4f6;
 }
 
 /* 手机适配 */

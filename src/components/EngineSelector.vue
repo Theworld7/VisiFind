@@ -53,12 +53,14 @@ const selectEngine = (engine: string) => {
   display: flex;
   gap: 8px;
   justify-content: flex-start;
+  margin-bottom: 16px;
 }
 
 .engine-tag {
   padding: 8px;
-  background: var(--bg-gray-15);
-  backdrop-filter: blur(4px);
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-radius: 50%;
   font-size: 14px;
   color: var(--text-white);
@@ -99,8 +101,8 @@ const selectEngine = (engine: string) => {
   border-radius: 20px;
   padding: 8px 16px;
   justify-content: flex-start;
-  background: #9ca3af;
-  color: #f3f4f6;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
   gap: 6px;
   transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }

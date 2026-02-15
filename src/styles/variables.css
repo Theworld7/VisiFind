@@ -46,3 +46,45 @@
   /* hover 背景 */
   --hover-bg-light: #fef0ef;
 }
+
+/* 白色高斯模糊半透明背景 */
+.glass-white {
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* 菜单容器 */
+.menu-container {
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 20px;
+}
+
+/* 菜单项 */
+.menu-item {
+  color: var(--text-white);
+  text-decoration: none;
+  font-size: 14px;
+  padding: 4px 16px;
+  border-radius: 16px;
+  background: transparent;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+}
+
+.menu-item:hover {
+  background: var(--bg-white-30);
+}
+
+.menu-item.active,
+.menu-item.router-link-active {
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+}
