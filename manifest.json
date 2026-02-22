@@ -9,18 +9,20 @@
     "48": "icons/icon-48.png",
     "128": "icons/icon-128.png"
   },
-  "action": {
+  "browser_action": {
     "default_page": "index.html"
   },
   "chrome_url_overrides": {
     "newtab": "index.html"
   },
-  "permissions": [
-    "storage",
-    "unlimitedStorage"
-  ],
+  "permissions": ["storage", "unlimitedStorage"],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "visifind@firefox.example.com",
+      "strict_min_version": "109.0"
+    }
+  },
   "background": {
-    "service_worker": "background.js",
-    "type": "module"
+    "scripts": ["background.js"]
   }
 }
