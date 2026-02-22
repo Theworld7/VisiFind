@@ -244,7 +244,7 @@ export function useIntakeRecord() {
     const end = new Date(endDate)
 
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0]
+      const dateStr = d.toISOString().split('T')[0]!
       const dayRecords = records.value.filter((r) => r.date === dateStr)
       const totals = dayRecords.reduce(
         (acc, record) => ({

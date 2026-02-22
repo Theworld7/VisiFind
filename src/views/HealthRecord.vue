@@ -50,7 +50,7 @@ const {
 const message = useMessage()
 
 const data = ref<FoodItemWithId[]>([])
-const selectedDate = ref(new Date().toISOString().split('T')[0])
+const selectedDate = ref(new Date().toISOString().split('T')[0]!)
 const activeTab = ref('intake')
 
 const modalVisible = ref(false)
@@ -104,8 +104,8 @@ onMounted(async () => {
   await loadDailyLimits()
 })
 
-const handleDateChange = async (date: number) => {
-  const dateStr = new Date(date).toISOString().split('T')[0]
+const handleDateChange = async (date: string) => {
+  const dateStr = new Date(date).toISOString().split('T')[0]!
   selectedDate.value = dateStr
   await loadRecordsByDate(dateStr)
 }
@@ -273,7 +273,7 @@ const handleSave = async () => {
       await updateFood(toRaw(formData))
       const index = data.value.findIndex((item) => item.id === formData.id)
       if (index !== -1) {
-        data.value[index] = { ...toRaw(formData) }
+        data.value[index] = { ...toRaw(formData), id: formData.id! } as FoodItemWithId
       }
       message.success('更新成功')
     } else {
@@ -289,7 +289,7 @@ const handleSave = async () => {
 
 const openIntakeModal = () => {
   Object.assign(intakeForm, {
-    date: new Date(selectedDate.value).getTime(),
+    date: new Date(selectedDate.value!).getTime(),
     mealType: 'breakfast',
     selectedFoods: [],
     quantity: 100,
@@ -307,7 +307,7 @@ const openEditModal = (mealType: 'breakfast' | 'lunch' | 'dinner') => {
         : dinnerRecords.value
 
   Object.assign(intakeForm, {
-    date: new Date(selectedDate.value).getTime(),
+    date: new Date(selectedDate.value!).getTime(),
     mealType,
     selectedFoods: records.map((r) => r.foodId),
     quantity: 100,
@@ -318,7 +318,7 @@ const openEditModal = (mealType: 'breakfast' | 'lunch' | 'dinner') => {
 
 const handleIntakeSubmit = async () => {
   try {
-    const dateStr = new Date(intakeForm.date).toISOString().split('T')[0]
+    const dateStr = new Date(intakeForm.date).toISOString().split('T')[0]!
 
     if (modalMode.value === 'edit') {
       const existingRecords =

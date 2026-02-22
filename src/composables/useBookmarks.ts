@@ -41,7 +41,7 @@ export function useBookmarks() {
     if (!db.value) return
 
     return new Promise<void>((resolve) => {
-      const transaction = db.value.transaction('bookmarks', 'readonly')
+      const transaction = db.value!.transaction('bookmarks', 'readonly')
       const store = transaction.objectStore('bookmarks')
       const request = store.getAll()
 
