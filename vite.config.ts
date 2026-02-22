@@ -10,13 +10,19 @@ export default defineConfig(({ mode }) => {
 
   return {
     base,
-    plugins: [
-      vue(),
-      vueDevTools(),
-    ],
+    plugins: [vue(), vueDevTools()],
     resolve: {
       alias: {
-        '@': fileURLToPath(new URL('./src', import.meta.url))
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+      },
+    },
+    server: {
+      proxy: {
+        '/bing-api': {
+          target: 'https://www.bing.com',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/bing-api/, ''),
+        },
       },
     },
   }
