@@ -5,19 +5,22 @@ import type { FormInst } from 'naive-ui'
 interface Props {
   show: boolean
   backgroundUrl: string
-  backgroundInputMode: 'color' | 'upload' | 'url'
+  backgroundInputMode: 'color' | 'upload' | 'url' | 'bing'
   backgroundUrlInput: string
   backgroundBlur: number
   backgroundColor: string
+  bingWallpaperUrl: string
 }
 
 interface Emits {
   (e: 'update:show', value: boolean): void
   (e: 'update:backgroundUrl', value: string): void
-  (e: 'update:backgroundInputMode', value: 'color' | 'upload' | 'url'): void
+  (e: 'update:backgroundInputMode', value: 'color' | 'upload' | 'url' | 'bing'): void
   (e: 'update:backgroundUrlInput', value: string): void
   (e: 'update:backgroundBlur', value: number): void
   (e: 'update:backgroundColor', value: string): void
+  (e: 'update:bingWallpaperUrl', value: string): void
+  (e: 'fetchBingWallpaper'): Promise<void>
   (
     e: 'save',
     data: {
@@ -25,6 +28,7 @@ interface Emits {
       backgroundInputMode: string
       backgroundBlur: number
       backgroundColor: string
+      bingWallpaperUrl: string
     },
   ): void
 }
@@ -34,7 +38,7 @@ const emit = defineEmits<Emits>()
 
 // 表单数据
 const formValue = ref({
-  mode: 'color' as 'color' | 'upload' | 'url',
+  mode: 'color' as 'color' | 'upload' | 'url' | 'bing',
   url: '',
   blur: 0,
   color: '#1a1a2e',
@@ -43,8 +47,14 @@ const formValue = ref({
 // 临时变量，用于上传图片数据
 const tempBackgroundUrl = ref('')
 
+// Bing 壁纸加载状态
+const bingLoading = ref(false)
+
 // 预览使用的值
 const previewMode = computed(() => formValue.value.mode)
+
+// Bing 壁纸预览 URL
+const bingWallpaperUrl = computed(() => props.bingWallpaperUrl)
 
 // 选择图片按钮文字
 const selectFileButtonText = computed(() => (tempBackgroundUrl.value ? '重新选择图片' : '选择图片'))
@@ -86,6 +96,15 @@ const close = () => {
   emit('update:show', false)
 }
 
+const handleFetchBingWallpaper = async () => {
+  bingLoading.value = true
+  try {
+    emit('fetchBingWallpaper')
+  } finally {
+    bingLoading.value = false
+  }
+}
+
 const save = () => {
   const url = formValue.value.mode === 'url' ? formValue.value.url : tempBackgroundUrl.value
   emit('save', {
@@ -93,6 +112,7 @@ const save = () => {
     backgroundInputMode: formValue.value.mode,
     backgroundBlur: formValue.value.blur,
     backgroundColor: formValue.value.color,
+    bingWallpaperUrl: props.bingWallpaperUrl,
   })
 }
 </script>
@@ -105,6 +125,7 @@ const save = () => {
         <div class="mode-switch">
           <n-radio-group v-model:value="formValue.mode" name="backgroundType">
             <n-radio-button value="color">色彩背景</n-radio-button>
+            <n-radio-button value="bing">必应壁纸</n-radio-button>
             <n-radio-button value="url">在线图片</n-radio-button>
             <n-radio-button value="upload">上传图片</n-radio-button>
           </n-radio-group>
@@ -123,6 +144,23 @@ const save = () => {
       <div v-if="previewMode === 'color'" class="form-group">
         <div class="form-label">预览</div>
         <div class="color-preview" :style="{ backgroundColor: formValue.color }"></div>
+      </div>
+      <!-- 必应壁纸 - Bing 模式显示 -->
+      <n-form-item v-if="previewMode === 'bing'" label="必应每日壁纸">
+        <n-space vertical>
+          <n-button :loading="bingLoading" @click="handleFetchBingWallpaper"> 刷新壁纸 </n-button>
+        </n-space>
+      </n-form-item>
+      <!-- Bing 预览 - Bing 模式且有壁纸时显示 -->
+      <div
+        v-if="previewMode === 'bing' && (bingWallpaperUrl || props.bingWallpaperUrl)"
+        class="form-group"
+        style="margin-bottom: 16px"
+      >
+        <div class="form-label">预览</div>
+        <div class="bg-preview">
+          <img :src="bingWallpaperUrl || props.bingWallpaperUrl" alt="Bing 壁纸预览" />
+        </div>
       </div>
       <!-- 选择图片按钮 - 上传模式显示 -->
       <n-form-item v-if="previewMode === 'upload'" label="选择图片">

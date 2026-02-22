@@ -96,6 +96,47 @@ export function useFoodLibrary() {
     })
   }
 
+  const updateFood = (food: FoodItem): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (!db.value) {
+        reject(new Error('Database not initialized'))
+        return
+      }
+
+      const transaction = db.value.transaction('foods', 'readwrite')
+      const store = transaction.objectStore('foods')
+      const request = store.put(food)
+
+      request.onsuccess = () => {
+        resolve()
+      }
+
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  const exportFoods = () => {
+    return foods.value
+  }
+
+  const importFoods = async (data: FoodItem[]): Promise<number> => {
+    if (!data || !Array.isArray(data)) return 0
+
+    const existingNames = new Set(foods.value.map((f) => f.name.toLowerCase()))
+    let importCount = 0
+
+    for (const food of data) {
+      if (!existingNames.has(food.name.toLowerCase())) {
+        const { id, ...foodWithoutId } = food
+        await addFood(foodWithoutId)
+        existingNames.add(food.name.toLowerCase())
+        importCount++
+      }
+    }
+
+    return importCount
+  }
+
   return {
     db,
     foods,
@@ -103,5 +144,8 @@ export function useFoodLibrary() {
     loadFoods,
     addFood,
     deleteFood,
+    updateFood,
+    exportFoods,
+    importFoods,
   }
 }

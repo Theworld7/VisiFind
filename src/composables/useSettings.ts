@@ -4,7 +4,7 @@ const showSettingsDrawer = ref(false)
 
 export function useSettings() {
   const formValue = ref({
-    mode: 'color' as 'color' | 'upload' | 'url',
+    mode: 'color' as 'color' | 'upload' | 'url' | 'bing',
     url: '',
     blur: 0,
     color: '#1a1a2e',
@@ -35,7 +35,7 @@ export function useSettings() {
   }
 
   const syncFormWithSettings = (
-    mode: 'color' | 'upload' | 'url',
+    mode: 'color' | 'upload' | 'url' | 'bing',
     url: string,
     blur: number,
     color: string,
@@ -45,6 +45,9 @@ export function useSettings() {
     formValue.value.url = mode === 'url' ? url : ''
     formValue.value.blur = blur
     formValue.value.color = color
+    if (mode === 'bing') {
+      tempBackgroundUrl.value = url
+    }
   }
 
   const openSettings = () => {

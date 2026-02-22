@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import {
   NDrawer,
   NDrawerContent,
@@ -16,9 +16,9 @@ import {
 } from 'naive-ui'
 import { useBackground } from '@/composables/useBackground'
 import { useSettings } from '@/composables/useSettings'
-import { useAppStore } from '@/stores/app'
+import { useBookmarks } from '@/composables/useBookmarks'
 
-const appStore = useAppStore()
+const { exportData, importData } = useBookmarks()
 
 const {
   backgroundUrl,
@@ -26,8 +26,10 @@ const {
   backgroundBlur,
   backgroundColor,
   backgroundStyle,
+  bingWallpaperUrl,
   saveSettings,
   updateBackground,
+  fetchBingWallpaper,
 } = useBackground()
 
 const {
@@ -44,13 +46,36 @@ const {
 
 const applySettings = () => {
   const url = formValue.value.mode === 'url' ? formValue.value.url : tempBackgroundUrl.value
+  if (formValue.value.mode === 'bing') {
+    backgroundUrl.value = tempBackgroundUrl.value
+  }
   updateBackground({
-    backgroundUrl: url,
+    backgroundUrl: formValue.value.mode === 'bing' ? tempBackgroundUrl.value : url,
     backgroundInputMode: formValue.value.mode,
     backgroundBlur: formValue.value.blur,
     backgroundColor: formValue.value.color,
+    bingWallpaperUrl: tempBackgroundUrl.value,
   })
   closeSettings()
+}
+
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+const handleFileImport = async () => {
+  const file = fileInputRef.value?.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = async (e) => {
+    try {
+      const data = JSON.parse(e.target?.result as string)
+      await importData(data)
+      alert('导入成功')
+    } catch (error) {
+      alert('导入失败')
+    }
+  }
+  reader.readAsText(file)
 }
 
 const blurOptions = [
@@ -60,11 +85,26 @@ const blurOptions = [
   { label: '强模糊', value: 20 },
 ]
 
+const bingLoading = ref(false)
+
+const handleFetchBingWallpaper = async () => {
+  bingLoading.value = true
+  try {
+    const url = await fetchBingWallpaper()
+    tempBackgroundUrl.value = url
+    formValue.value.mode = 'bing'
+  } catch (error) {
+    console.error('Failed to fetch Bing wallpaper:', error)
+  } finally {
+    bingLoading.value = false
+  }
+}
+
 const handleDrawerShow = (show: boolean) => {
   if (show) {
     syncFormWithSettings(
       backgroundInputMode.value,
-      backgroundUrl.value,
+      backgroundInputMode.value === 'bing' ? bingWallpaperUrl.value : backgroundUrl.value,
       backgroundBlur.value,
       backgroundColor.value,
     )
@@ -85,6 +125,7 @@ const handleDrawerShow = (show: boolean) => {
           <div class="mode-switch">
             <n-radio-group v-model:value="formValue.mode" name="backgroundType">
               <n-radio-button value="color">色彩背景</n-radio-button>
+              <n-radio-button value="bing">必应壁纸</n-radio-button>
               <n-radio-button value="url">在线图片</n-radio-button>
               <n-radio-button value="upload">上传图片</n-radio-button>
             </n-radio-group>
@@ -109,6 +150,19 @@ const handleDrawerShow = (show: boolean) => {
         <div v-if="formValue.mode === 'color'" class="form-group">
           <div class="form-label">预览</div>
           <div class="color-preview" :style="{ backgroundColor: formValue.color }"></div>
+        </div>
+        <n-form-item v-if="formValue.mode === 'bing'" label="必应每日壁纸">
+          <n-button :loading="bingLoading" @click="handleFetchBingWallpaper"> 刷新壁纸 </n-button>
+        </n-form-item>
+        <div
+          v-if="formValue.mode === 'bing' && tempBackgroundUrl"
+          class="form-group"
+          style="margin-bottom: 16px"
+        >
+          <div class="form-label">预览</div>
+          <div class="bg-preview">
+            <img :src="tempBackgroundUrl" alt="必应壁纸预览" />
+          </div>
         </div>
         <n-form-item v-if="formValue.mode === 'upload'" label="选择图片">
           <n-button @click="triggerFileInput">{{ selectFileButtonText }}</n-button>
@@ -150,8 +204,15 @@ const handleDrawerShow = (show: boolean) => {
       <n-divider />
 
       <n-space vertical>
-        <n-button block @click="appStore.doTriggerImport()"> 导入备份 </n-button>
-        <n-button block @click="appStore.doExportData()"> 导出备份 </n-button>
+        <input
+          ref="fileInputRef"
+          type="file"
+          accept=".json"
+          style="display: none"
+          @change="handleFileImport"
+        />
+        <n-button block @click="fileInputRef?.click()"> 导入备份 </n-button>
+        <n-button block @click="exportData()"> 导出备份 </n-button>
       </n-space>
 
       <template #footer>

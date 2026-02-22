@@ -9,6 +9,7 @@ import EngineSelector from '@/components/EngineSelector.vue'
 import { useBookmarks, type Bookmark } from '@/composables/useBookmarks'
 import { useSearch } from '@/composables/useSearch'
 import { useAppSettings } from '@/composables/useAppSettings'
+import { useBackground } from '@/composables/useBackground'
 import { useAppStore } from '@/stores/app'
 
 const {
@@ -25,6 +26,7 @@ const {
 } = useBookmarks()
 const { searchQuery, currentEngine, search, openBookmark } = useSearch()
 const { initDB: initSettingsDB, loadSettings, saveSettings } = useAppSettings()
+const { loadSettings: loadBackgroundSettings } = useBackground()
 
 const isModalOpen = ref(false)
 const modalMode = ref<'add' | 'edit'>('add')
@@ -92,10 +94,13 @@ const handleImportData = (event: Event) => {
     try {
       const data = JSON.parse(e.target?.result as string)
       const importCount = await importData(data)
+      if (data.backgroundSettings || data.foodLibrary) {
+        await loadBackgroundSettings()
+      }
       if (importCount !== undefined && importCount > 0) {
-        alert(`导入成功！共导入 ${importCount} 个书签`)
+        alert(`导入成功！共导入 ${importCount} 个项目`)
       } else if (importCount === 0) {
-        alert('没有新书签需要导入')
+        alert('没有新数据需要导入')
       }
     } catch (err) {
       alert('导入失败，请检查文件格式是否正确')
@@ -106,8 +111,8 @@ const handleImportData = (event: Event) => {
   reader.readAsText(file)
 }
 
-const doExportData = () => {
-  exportData()
+const doExportData = async () => {
+  await exportData()
 }
 
 onMounted(async () => {
