@@ -1,0 +1,1 @@
+import{t as e}from"./useFoodLibrary-UySFGBdd.js";export{e as useFoodLibrary};
