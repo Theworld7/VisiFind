@@ -1,0 +1,226 @@
+/* Win7 Aero 毛玻璃效果 */
+.aero-glass {
+  background: linear-gradient(
+    to bottom,
+    rgba(30, 30, 30, 0.15) 0%,
+    rgba(20, 20, 20, 0.1) 50%,
+    rgba(10, 10, 10, 0.15) 100%
+  );
+  backdrop-filter: blur(20px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+.aero-glass-light {
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.2) 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    rgba(255, 255, 255, 0.2) 100%
+  );
+  backdrop-filter: blur(20px);
+  box-shadow:
+    0 0 20px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+}
+
+/* 毛玻璃边框 */
+.aero-border {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-top-color: rgba(255, 255, 255, 0.3);
+}
+
+/* 文字投影 */
+.aero-text {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 按钮悬停光晕 */
+.aero-hover:hover {
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+}
+
+/* Modal 样式 */
+.modal-backdrop {
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: rgba(30, 30, 30, 0.85);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 25px 50px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* 隐藏滚动条 */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* 自定义滚动条样式 - Aero Glass 风格 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+/* Firefox 滚动条样式 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+/* 书签 Grid 响应式高度 - 基于屏幕高度 */
+.bookmarks-grid-height {
+  max-height: 40vh; /* 小屏幕默认值 */
+}
+
+@media (min-height: 600px) {
+  .bookmarks-grid-height {
+    max-height: 50vh;
+  }
+}
+
+@media (min-height: 768px) {
+  .bookmarks-grid-height {
+    max-height: 55vh;
+  }
+}
+
+@media (min-height: 900px) {
+  .bookmarks-grid-height {
+    max-height: 60vh;
+  }
+}
+
+@media (min-height: 1080px) {
+  .bookmarks-grid-height {
+    max-height: 65vh;
+  }
+}
+
+@media (min-height: 1200px) {
+  .bookmarks-grid-height {
+    max-height: 70vh;
+  }
+}
+
+/* ============ 暗色模式变体 ============ */
+
+/* 全局过渡 */
+.aero-glass,
+.aero-glass-light,
+.modal-content,
+.modal-backdrop,
+.bg-overlay-dark {
+  transition: background 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+}
+
+/* 暗色模式：更深的毛玻璃背景 */
+:root.is-dark .aero-glass {
+  background: linear-gradient(
+    to bottom,
+    rgba(10, 10, 10, 0.3) 0%,
+    rgba(5, 5, 5, 0.25) 50%,
+    rgba(10, 10, 10, 0.3) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* 暗色模式：浅色毛玻璃变暗 */
+:root.is-dark .aero-glass-light {
+  background: linear-gradient(
+    to bottom,
+    rgba(20, 20, 20, 0.4) 0%,
+    rgba(15, 15, 15, 0.3) 50%,
+    rgba(20, 20, 20, 0.4) 100%
+  );
+  box-shadow:
+    0 0 20px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+}
+
+/* 暗色模式：Modal 内容变暗 */
+:root.is-dark .modal-content {
+  background: rgba(10, 10, 10, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 25px 50px rgba(0, 0, 0, 0.7),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+/* 暗色模式：Modal 遮罩加暗 */
+:root.is-dark .modal-backdrop {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(6px);
+}
+
+/* 暗色模式：滚动条变暗 */
+:root.is-dark ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+:root.is-dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+/* 暗色模式：毛玻璃边框变暗 */
+:root.is-dark .aero-border {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top-color: rgba(255, 255, 255, 0.15);
+}
+
+/* 暗色模式：按钮悬停光晕调暗 */
+:root.is-dark .aero-hover:hover {
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.4);
+}
+
+/* 暗色模式：文字投影加强 */
+:root.is-dark .aero-text {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ============ 背景渐变遮罩 ============ */
+
+/* 暗色模式背景遮罩：半透明黑色渐变（使用伪元素，不影响背景图片） */
+:root.is-dark .bg-overlay-dark::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.4) 0%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+  pointer-events: none;
+}
