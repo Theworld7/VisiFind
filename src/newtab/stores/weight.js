@@ -134,7 +134,7 @@ export const useWeightStore = defineStore('weight', () => {
     // 计算与上次相比的变化
     let change = null
     if (weights.length >= 2) {
-      change = latest - weights[1]
+      change = Math.round((latest - weights[1]) * 10) / 10
     }
     
     return {

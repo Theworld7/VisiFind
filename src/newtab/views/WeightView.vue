@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useWeightStore } from '../stores/weight'
 import WeightTrend from '../components/WeightTrend.vue'
-import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, X, Save } from 'lucide-vue-next'
+import { Plus, Pencil, Trash2, ChevronDown, ChevronUp, X, Save, RefreshCw } from 'lucide-vue-next'
 
 const weightStore = useWeightStore()
 
@@ -39,7 +39,7 @@ const statsCards = computed(() => {
     { label: '最高体重', value: max, suffix: unitLabel.value, icon: 'max' },
     { 
       label: '较上次变化', 
-      value: change !== null ? (change > 0 ? `+${change}` : change.toFixed(1)) : '--', 
+      value: change !== null ? (change > 0 ? `+${change.toFixed(1)}` : change.toFixed(1)) : '--', 
       suffix: unitLabel.value,
       icon: change > 0 ? 'up' : change < 0 ? 'down' : 'stable'
     }
@@ -149,11 +149,11 @@ onMounted(async () => {
             <span>添加记录</span>
           </button>
           <button
-            @click="handleToggleUnit"
-            class="aero-glass px-4 py-2 rounded-lg aero-border flex items-center gap-2 text-white/80 hover:text-white transition-colors"
+            @click="weightStore.toggleUnit"
+            class="aero-glass px-4 py-2 rounded-lg aero-border flex items-center gap-2 text-white/80 hover:text-white transition-colors hover:bg-white/10"
           >
-            <span class="text-sm font-medium">{{ unitLabel }}</span>
-            <ChevronDown class="w-4 h-4" />
+            <RefreshCw class="w-4 h-4" />
+            <span>{{ unitLabel }}</span>
           </button>
         </div>
       </div>
