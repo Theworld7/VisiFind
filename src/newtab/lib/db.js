@@ -1,5 +1,5 @@
 const DB_NAME = 'VisiFindDB'
-const DB_VERSION = 10
+const DB_VERSION = 11
 const STORE_NAME = 'settings'
 
 export function openDB() {
@@ -59,6 +59,11 @@ export function openDB() {
         seriesStore.createIndex('name', 'name', { unique: false })
         seriesStore.createIndex('category', 'category', { unique: false })
         seriesStore.createIndex('status', 'status', { unique: false })
+      }
+      // 壁纸缓存存储
+      if (!db.objectStoreNames.contains('wallpaperCache')) {
+        const cacheStore = db.createObjectStore('wallpaperCache', { keyPath: 'id' })
+        cacheStore.createIndex('cachedDate', 'cachedDate', { unique: false })
       }
     }
   })
@@ -310,5 +315,79 @@ export async function importAllItemsData(data) {
       resolve()
     }
     clearRequest.onerror = () => reject(clearRequest.error)
+  })
+}
+
+// ============ 壁纸缓存操作 ============
+
+const WALLPAPER_CACHE_STORE = 'wallpaperCache'
+
+/**
+ * 获取壁纸缓存
+ * @param {string} type - 'full' 或 'preview'
+ * @returns {Promise<Object|null>} 缓存的壁纸数据
+ */
+export async function getWallpaperCache(type = 'full') {
+  const db = await openDB()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(WALLPAPER_CACHE_STORE, 'readonly')
+    const store = transaction.objectStore(WALLPAPER_CACHE_STORE)
+    const request = store.get(type)
+
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => resolve(request.result || null)
+  })
+}
+
+/**
+ * 保存壁纸缓存
+ * @param {string} type - 'full' 或 'preview'
+ * @param {string} imageUrl - 壁纸 URL
+ * @param {Blob} blob - 图片数据
+ * @param {string} cachedDate - 缓存日期 (YYYY-MM-DD)
+ */
+export async function setWallpaperCache(type, imageUrl, blob, cachedDate) {
+  const db = await openDB()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(WALLPAPER_CACHE_STORE, 'readwrite')
+    const store = transaction.objectStore(WALLPAPER_CACHE_STORE)
+    const request = store.put({
+      id: type,
+      imageUrl,
+      blob,
+      cachedDate,
+      cachedAt: new Date().toISOString()
+    })
+
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => resolve()
+  })
+}
+
+/**
+ * 检查壁纸缓存是否有效（是否是今天的缓存）
+ * @param {string} type - 'full' 或 'preview'
+ * @returns {Promise<boolean>} 是否有效
+ */
+export async function isWallpaperCacheValid(type = 'full') {
+  const cache = await getWallpaperCache(type)
+  if (!cache) return false
+
+  const today = new Date().toISOString().split('T')[0]
+  return cache.cachedDate === today
+}
+
+/**
+ * 清除壁纸缓存
+ */
+export async function clearWallpaperCache() {
+  const db = await openDB()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(WALLPAPER_CACHE_STORE, 'readwrite')
+    const store = transaction.objectStore(WALLPAPER_CACHE_STORE)
+    const request = store.clear()
+
+    request.onerror = () => reject(request.error)
+    request.onsuccess = () => resolve()
   })
 }

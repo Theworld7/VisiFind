@@ -10,7 +10,7 @@ import SettingsDialog from './components/SettingsDialog.vue'
 import './styles/aero.css'
 
 const settingsOpen = ref(false)
-const { fetchBingImage } = useBingImage()
+const { getCachedWallpaper, shouldRefresh } = useBingImage()
 const searchState = useSearch()
 const { bgMode, imageUrl, uploadedImage, onlineImageUrl, loadSettings } = useSettings()
 const { isDark } = useTheme()
@@ -49,7 +49,7 @@ onMounted(async () => {
   if (mode === 'bing') {
     // 检查是否有恢复的壁纸 URL
     const restoredImageUrl = await getAppSetting('restoredBingImageUrl')
-    
+
     if (restoredImageUrl) {
       // 使用恢复的壁纸 URL
       bgImage.value = restoredImageUrl
@@ -59,26 +59,22 @@ onMounted(async () => {
       await saveCurrentDate()
     } else {
       // 没有恢复的壁纸，检查日期是否需要刷新
-      const shouldRefresh = await shouldRefreshBingImage()
-      
-      if (shouldRefresh) {
-        // 日期变化，获取新壁纸
-        bgImage.value = await fetchBingImage()
-        // 保存壁纸 URL 到 IndexedDB
-        await setSetting('imageUrl', bgImage.value)
+      const shouldRefreshDate = await shouldRefreshBingImage()
+
+      if (shouldRefreshDate) {
+        // 日期变化，获取新壁纸（会缓存到 IndexedDB）
+        bgImage.value = await getCachedWallpaper(false)
         await saveCurrentDate()
       } else {
-        // 日期未变化，使用缓存的壁纸 URL
-        // 优先使用 imageUrl.value，如果为空则从设置中读取
-        const cachedImageUrl = imageUrl.value || await getSetting('imageUrl')
-        
-        if (cachedImageUrl) {
-          bgImage.value = cachedImageUrl
+        // 日期未变化，优先使用缓存（快速渲染）
+        const needRefresh = await shouldRefresh()
+
+        if (needRefresh) {
+          // 没有缓存，需要获取新壁纸
+          bgImage.value = await getCachedWallpaper(false)
         } else {
-          // 没有缓存，获取新壁纸
-          bgImage.value = await fetchBingImage()
-          await setSetting('imageUrl', bgImage.value)
-          await saveCurrentDate()
+          // 有今天的缓存，直接使用
+          bgImage.value = await getCachedWallpaper(false)
         }
       }
     }
@@ -95,7 +91,8 @@ const handleSettingsClick = () => {
 
 const handleSettingsChange = async (data) => {
   if (data.mode === 'bing') {
-    bgImage.value = await fetchBingImage()
+    // 强制刷新壁纸
+    bgImage.value = await getCachedWallpaper(true)
   } else if (data.mode === 'online' || data.mode === 'upload') {
     bgImage.value = data.imageUrl
   } else {
@@ -109,7 +106,10 @@ const handleSettingsChange = async (data) => {
     class="fixed inset-0 -z-10"
     :class="{ 'is-dark': isDark, 'bg-overlay-dark': isDark }"
     :style="bgImage ? { backgroundImage: `url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}"
-  ></div>
+  >
+    <!-- 默认渐变背景（壁纸加载前显示） -->
+    <div v-if="!bgImage" class="absolute inset-0 bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950"></div>
+  </div>
 
   <div class="min-h-screen" :class="{ 'is-dark': isDark }">
     <Header @settings-click="handleSettingsClick" />

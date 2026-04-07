@@ -25,7 +25,7 @@ const props = defineProps({
 const emit = defineEmits(['update:open', 'change'])
 
 const { bgMode, imageUrl, uploadedImage, onlineImageUrl, loadSettings, setBgMode, setImageUrl, setUploadedImage, getBgImageUrl } = useSettings()
-const { fetchPreview } = useBingImage()
+const { getCachedPreview } = useBingImage()
 
 const bgModes = [
   { value: 'bing', label: 'Bing 每日壁纸', icon: Image },
@@ -44,12 +44,8 @@ watch(() => props.open, async (newVal) => {
     if (bgMode.value === 'bing') {
       // 优先使用已保存的壁纸 URL 作为预览
       const savedImageUrl = imageUrl.value || await getSetting('imageUrl')
-      if (savedImageUrl) {
-        // 使用保存的壁纸 URL，转换为缩图尺寸用于预览
-        bingPreviewUrl.value = savedImageUrl.replace('&w=3840&h=2160&rs=1&qlt=100', '&w=640&h=360')
-      } else {
-        bingPreviewUrl.value = await fetchPreview()
-      }
+      // 从缓存获取预览图（优先缓存，回退到 URL 转换）
+      bingPreviewUrl.value = await getCachedPreview(savedImageUrl)
     }
   }
 }, { immediate: true })
